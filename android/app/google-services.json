@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "361107667771",
+    "project_id": "business-crm-baf5c",
+    "storage_bucket": "business-crm-baf5c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:361107667771:android:33b3004b5faff34939951e",
+        "android_client_info": {
+          "package_name": "com.example.business_crm"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAfzRf1PFoZ9u1reUBz6UgcVaaO2dKYZ-w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
