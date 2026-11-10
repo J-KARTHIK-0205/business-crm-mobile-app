@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ReportsScreen extends StatelessWidget {
   const ReportsScreen({super.key});
@@ -7,57 +8,100 @@ class ReportsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final db = FirebaseFirestore.instance;
-    final colors = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      return const Center(
+        child: Text('Please log in to view reports.'),
+      );
+    }
+
+    // Only load records belonging to the logged-in user.
+    final customersStream = db
+        .collection('customers')
+        .where('userId', isEqualTo: user.uid)
+        .snapshots();
+
+    final leadsStream = db
+        .collection('leads')
+        .where('userId', isEqualTo: user.uid)
+        .snapshots();
+
+    final tasksStream = db
+        .collection('tasks')
+        .where('userId', isEqualTo: user.uid)
+        .snapshots();
 
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: db.collection('customers').snapshots(),
+      stream: customersStream,
       builder: (context, customerSnapshot) {
         if (customerSnapshot.hasError) {
-          return Center(child: Text('Customer Error: ${customerSnapshot.error}'));
+          return _errorMessage(
+            'Customer Error: ${customerSnapshot.error}',
+            colors.error,
+          );
         }
 
         if (!customerSnapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
         }
 
         return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-          stream: db.collection('leads').snapshots(),
+          stream: leadsStream,
           builder: (context, leadSnapshot) {
             if (leadSnapshot.hasError) {
-              return Center(child: Text('Lead Error: ${leadSnapshot.error}'));
+              return _errorMessage(
+                'Lead Error: ${leadSnapshot.error}',
+                colors.error,
+              );
             }
 
             if (!leadSnapshot.hasData) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(
+                child: CircularProgressIndicator(),
+              );
             }
 
             return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: db.collection('tasks').snapshots(),
+              stream: tasksStream,
               builder: (context, taskSnapshot) {
                 if (taskSnapshot.hasError) {
-                  return Center(child: Text('Task Error: ${taskSnapshot.error}'));
+                  return _errorMessage(
+                    'Task Error: ${taskSnapshot.error}',
+                    colors.error,
+                  );
                 }
 
                 if (!taskSnapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(
+                    child: CircularProgressIndicator(),
+                  );
                 }
 
+                // Current user's Firestore records.
                 final customers = customerSnapshot.data!.docs;
                 final leads = leadSnapshot.data!.docs;
                 final tasks = taskSnapshot.data!.docs;
 
+                // LEAD COUNTS
                 int leadCount(String status) {
                   return leads.where((doc) {
                     return doc.data()['status'] == status;
                   }).length;
                 }
 
+                // TASK COUNTS
                 int taskCount(String status) {
                   return tasks.where((doc) {
                     return doc.data()['status'] == status;
                   }).length;
                 }
 
+                // TASK COMPLETION
                 final totalTasks = tasks.length;
                 final completedTasks = taskCount('Completed');
 
@@ -71,11 +115,13 @@ class ReportsScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        // PAGE TITLE
+                        Text(
                           'Business Reports',
-                          style: TextStyle(
+                          style: theme.textTheme.headlineSmall?.copyWith(
                             fontSize: 27,
                             fontWeight: FontWeight.bold,
+                            color: colors.onSurface,
                           ),
                         ),
 
@@ -83,20 +129,15 @@ class ReportsScreen extends StatelessWidget {
 
                         Text(
                           'Overview of your business performance.',
-                          style: TextStyle(
+                          style: theme.textTheme.bodyMedium?.copyWith(
                             color: colors.onSurfaceVariant,
                           ),
                         ),
 
                         const SizedBox(height: 22),
 
-                        const Text(
-                          'Customer Overview',
-                          style: TextStyle(
-                            fontSize: 19,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        // CUSTOMER OVERVIEW
+                        _sectionTitle(context, 'Customer Overview'),
 
                         const SizedBox(height: 12),
 
@@ -116,13 +157,8 @@ class ReportsScreen extends StatelessWidget {
 
                         const SizedBox(height: 22),
 
-                        const Text(
-                          'Lead Overview',
-                          style: TextStyle(
-                            fontSize: 19,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        // LEAD OVERVIEW
+                        _sectionTitle(context, 'Lead Overview'),
 
                         const SizedBox(height: 12),
 
@@ -177,13 +213,8 @@ class ReportsScreen extends StatelessWidget {
 
                         const SizedBox(height: 22),
 
-                        const Text(
-                          'Task Overview',
-                          style: TextStyle(
-                            fontSize: 19,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        // TASK OVERVIEW
+                        _sectionTitle(context, 'Task Overview'),
 
                         const SizedBox(height: 12),
 
@@ -224,41 +255,10 @@ class ReportsScreen extends StatelessWidget {
 
                         const SizedBox(height: 22),
 
-                        Card(
-                          color: colors.surface,
-                          child: Padding(
-                            padding: const EdgeInsets.all(20),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Task Completion Rate',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-
-                                const SizedBox(height: 18),
-
-                                LinearProgressIndicator(
-                                  value: completionRate / 100,
-                                  minHeight: 12,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-
-                                const SizedBox(height: 12),
-
-                                Text(
-                                  '${completionRate.toStringAsFixed(1)}% completed',
-                                  style: TextStyle(
-                                    color: colors.onSurfaceVariant,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                        // COMPLETION RATE
+                        _completionCard(
+                          context,
+                          completionRate,
                         ),
 
                         const SizedBox(height: 25),
@@ -274,6 +274,39 @@ class ReportsScreen extends StatelessWidget {
     );
   }
 
+  // ERROR MESSAGE
+  Widget _errorMessage(String message, Color color) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Text(
+          message,
+          style: TextStyle(color: color),
+          textAlign: TextAlign.center,
+        ),
+      ),
+    );
+  }
+
+  // SECTION TITLE
+  Widget _sectionTitle(
+    BuildContext context,
+    String title,
+  ) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    return Text(
+      title,
+      style: theme.textTheme.titleLarge?.copyWith(
+        fontSize: 19,
+        fontWeight: FontWeight.bold,
+        color: colors.onSurface,
+      ),
+    );
+  }
+
+  // METRIC CARD
   Widget _metric(
     BuildContext context,
     String title,
@@ -281,12 +314,21 @@ class ReportsScreen extends StatelessWidget {
     IconData icon,
     Color color,
   ) {
-    final colors = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
 
     return SizedBox(
       width: 175,
       child: Card(
         color: colors.surface,
+        surfaceTintColor: colors.surfaceTint,
+        elevation: 1,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(
+            color: colors.outlineVariant,
+          ),
+        ),
         child: Padding(
           padding: const EdgeInsets.all(17),
           child: Column(
@@ -302,9 +344,10 @@ class ReportsScreen extends StatelessWidget {
 
               Text(
                 value.toString(),
-                style: const TextStyle(
+                style: theme.textTheme.headlineSmall?.copyWith(
                   fontSize: 25,
                   fontWeight: FontWeight.bold,
+                  color: colors.onSurface,
                 ),
               ),
 
@@ -312,12 +355,73 @@ class ReportsScreen extends StatelessWidget {
 
               Text(
                 title,
-                style: TextStyle(
+                style: theme.textTheme.bodyMedium?.copyWith(
                   color: colors.onSurfaceVariant,
                 ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  // TASK COMPLETION CARD
+  Widget _completionCard(
+    BuildContext context,
+    double completionRate,
+  ) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    return Card(
+      color: colors.surface,
+      surfaceTintColor: colors.surfaceTint,
+      elevation: 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(
+          color: colors.outlineVariant,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Task Completion Rate',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: colors.onSurface,
+              ),
+            ),
+
+            const SizedBox(height: 18),
+
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: LinearProgressIndicator(
+                value: (completionRate / 100).clamp(0.0, 1.0),
+                minHeight: 12,
+                backgroundColor: colors.surfaceContainerHighest,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  colors.primary,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            Text(
+              '${completionRate.toStringAsFixed(1)}% completed',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colors.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
       ),
     );

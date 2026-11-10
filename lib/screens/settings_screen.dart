@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+import '../auth/auth_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -9,30 +12,39 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final db = FirebaseFirestore.instance;
+  final FirebaseFirestore firestore = FirebaseFirestore.instance;
 
   final nameController = TextEditingController();
   final emailController = TextEditingController();
   final phoneController = TextEditingController();
-  final businessController = TextEditingController();
-  final businessEmailController = TextEditingController();
+  final businessNameController = TextEditingController();
+  final businessAddressController = TextEditingController();
 
+  bool notificationsEnabled = true;
   bool emailNotifications = true;
-  bool taskReminders = true;
-  bool leadNotifications = true;
-  String theme = 'Light';
+  bool darkModeEnabled = false;
 
-  bool loading = true;
-  bool saving = false;
+  bool isLoading = true;
+  bool isSaving = false;
+  bool loggingOut = false;
 
-  DocumentReference<Map<String, dynamic>> get profileRef =>
-      db.collection('app_settings').doc('profile');
+  User? get currentUser => FirebaseAuth.instance.currentUser;
+
+  DocumentReference<Map<String, dynamic>> get userProfileRef {
+    final user = currentUser;
+
+    if (user == null) {
+      throw Exception('No logged-in user found.');
+    }
+
+    return firestore.collection('users').doc(user.uid);
+  }
 
   DocumentReference<Map<String, dynamic>> get businessRef =>
-      db.collection('app_settings').doc('business');
+      firestore.collection('app_settings').doc('business');
 
   DocumentReference<Map<String, dynamic>> get preferencesRef =>
-      db.collection('app_settings').doc('preferences');
+      firestore.collection('app_settings').doc('preferences');
 
   @override
   void initState() {
@@ -45,15 +57,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
     nameController.dispose();
     emailController.dispose();
     phoneController.dispose();
-    businessController.dispose();
-    businessEmailController.dispose();
+    businessNameController.dispose();
+    businessAddressController.dispose();
     super.dispose();
   }
 
+  // --------------------------------------------------
+  // LOAD SETTINGS
+  // --------------------------------------------------
+
   Future<void> loadSettings() async {
     try {
+      final user = currentUser;
+
+      if (user == null) {
+        throw Exception('Please log in again.');
+      }
+
       final results = await Future.wait([
-        profileRef.get(),
+        userProfileRef.get(),
         businessRef.get(),
         preferencesRef.get(),
       ]);
@@ -62,209 +84,431 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final business = results[1].data() ?? {};
       final preferences = results[2].data() ?? {};
 
-      nameController.text = profile['name'] ?? 'J Karthik';
-      emailController.text = profile['email'] ?? 'karthik@gmail.com';
-      phoneController.text = profile['phone'] ?? '9876543210';
+      await user.reload();
+      final refreshedUser = FirebaseAuth.instance.currentUser;
 
-      businessController.text = business['businessName'] ?? 'My Business';
-      businessEmailController.text = business['businessEmail'] ?? 'business@gmail.com';
+      if (!mounted) return;
 
-      emailNotifications = preferences['emailNotifications'] ?? true;
-      taskReminders = preferences['taskReminders'] ?? true;
-      leadNotifications = preferences['leadNotifications'] ?? true;
-      theme = preferences['theme'] ?? 'Light';
+      setState(() {
+        nameController.text =
+            refreshedUser?.displayName ??
+            profile['name'] ??
+            '';
+
+        emailController.text =
+            refreshedUser?.email ??
+            profile['email'] ??
+            '';
+
+        phoneController.text = profile['phone'] ?? '';
+
+        businessNameController.text =
+            business['businessName'] ?? '';
+
+        businessAddressController.text =
+            business['businessAddress'] ?? '';
+
+        notificationsEnabled =
+            preferences['notificationsEnabled'] ?? true;
+
+        emailNotifications =
+            preferences['emailNotifications'] ?? true;
+
+        final savedDarkMode = preferences['darkModeEnabled'];
+
+        darkModeEnabled = savedDarkMode is bool
+            ? savedDarkMode
+            : preferences['theme'] == 'Dark';
+
+        isLoading = false;
+      });
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Unable to load settings: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => loading = false);
+      if (!mounted) return;
+
+      setState(() {
+        isLoading = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error loading settings: $e'),
+        ),
+      );
     }
   }
 
+  // --------------------------------------------------
+  // SAVE SETTINGS
+  // --------------------------------------------------
+
   Future<void> saveSettings() async {
-    setState(() => saving = true);
+    if (isSaving) return;
+
+    final user = currentUser;
+
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please log in again.'),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      isSaving = true;
+    });
 
     try {
+      final updatedName = nameController.text.trim();
+
+      if (updatedName.isNotEmpty &&
+          updatedName != (user.displayName ?? '')) {
+        await user.updateDisplayName(updatedName);
+        await user.reload();
+      }
+
       await Future.wait([
-        profileRef.set({
-          'name': nameController.text.trim(),
-          'email': emailController.text.trim(),
+        userProfileRef.set({
+          'uid': user.uid,
+          'name': updatedName,
+          'email': user.email,
           'phone': phoneController.text.trim(),
           'updatedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true)),
+
         businessRef.set({
-          'businessName': businessController.text.trim(),
-          'businessEmail': businessEmailController.text.trim(),
+          'businessName': businessNameController.text.trim(),
+          'businessAddress': businessAddressController.text.trim(),
           'updatedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true)),
+
         preferencesRef.set({
+          'notificationsEnabled': notificationsEnabled,
           'emailNotifications': emailNotifications,
-          'taskReminders': taskReminders,
-          'leadNotifications': leadNotifications,
-          'theme': theme,
+          'darkModeEnabled': darkModeEnabled,
           'updatedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true)),
       ]);
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Settings saved successfully')),
-        );
-      }
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Settings saved successfully!'),
+        ),
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving settings: $e')),
-        );
-      }
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error saving settings: $e'),
+        ),
+      );
     } finally {
-      if (mounted) setState(() => saving = false);
+      if (mounted) {
+        setState(() {
+          isSaving = false;
+        });
+      }
     }
   }
 
-  Widget sectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 22, bottom: 10),
-      child: Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
-    );
+  // --------------------------------------------------
+  // LOGOUT
+  // --------------------------------------------------
+
+  Future<void> logout() async {
+    if (loggingOut) return;
+
+    setState(() {
+      loggingOut = true;
+    });
+
+    try {
+      await AuthService().logout();
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Logout failed: $e'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          loggingOut = false;
+        });
+      }
+    }
   }
 
-  Widget inputField(String label, TextEditingController controller, IconData icon,
-      {TextInputType keyboardType = TextInputType.text}) {
+  Future<void> confirmLogout() async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Logout'),
+          content: const Text(
+            'Are you sure you want to logout?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              child: const Text('Logout'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldLogout == true && mounted) {
+      await logout();
+    }
+  }
+
+  // --------------------------------------------------
+  // REUSABLE WIDGETS
+  // --------------------------------------------------
+
+  Widget sectionTitle(String title) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 13),
-      child: TextField(
-        controller: controller,
-        keyboardType: keyboardType,
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: Icon(icon),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      padding: const EdgeInsets.only(
+        top: 24,
+        bottom: 12,
+      ),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
         ),
       ),
     );
   }
 
+  Widget inputField({
+    required String label,
+    required TextEditingController controller,
+    TextInputType keyboardType = TextInputType.text,
+    bool readOnly = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: TextField(
+        controller: controller,
+        keyboardType: keyboardType,
+        readOnly: readOnly,
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+          suffixIcon: readOnly
+              ? const Icon(Icons.lock_outline)
+              : null,
+        ),
+      ),
+    );
+  }
+
+  Widget settingSwitch({
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return SwitchListTile(
+      title: Text(title),
+      subtitle: Text(subtitle),
+      value: value,
+      onChanged: onChanged,
+      contentPadding: EdgeInsets.zero,
+    );
+  }
+
+  // --------------------------------------------------
+  // DARK MODE UPDATE
+  // --------------------------------------------------
+
+  Future<void> updateDarkMode(bool value) async {
+    final previousValue = darkModeEnabled;
+
+    setState(() {
+      darkModeEnabled = value;
+    });
+
+    try {
+      await preferencesRef.set({
+        'darkModeEnabled': value,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        darkModeEnabled = previousValue;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Unable to update theme: $e'),
+        ),
+      );
+    }
+  }
+
+  // --------------------------------------------------
+  // SETTINGS SCREEN UI
+  // --------------------------------------------------
+
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    if (isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
 
-    if (loading) return const Center(child: CircularProgressIndicator());
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Settings'),
+      ),
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+
         children: [
-          const Text('Settings', style: TextStyle(fontSize: 27, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 7),
-          Text('Manage your profile, business and preferences.',
-              style: TextStyle(color: colors.onSurfaceVariant)),
+          // PROFILE INFORMATION
 
           sectionTitle('Profile Information'),
-          Card(
-            color: colors.surface,
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: 34,
-                    backgroundColor: colors.primaryContainer,
-                    child: Icon(Icons.person, size: 35, color: colors.onPrimaryContainer),
-                  ),
-                  const SizedBox(height: 18),
-                  inputField('Full Name', nameController, Icons.person_outline),
-                  inputField('Email Address', emailController, Icons.email_outlined,
-                      keyboardType: TextInputType.emailAddress),
-                  inputField('Phone Number', phoneController, Icons.phone_outlined,
-                      keyboardType: TextInputType.phone),
-                ],
-              ),
-            ),
+
+          inputField(
+            label: 'Full Name',
+            controller: nameController,
           ),
+
+          inputField(
+            label: 'Email Address',
+            controller: emailController,
+            keyboardType: TextInputType.emailAddress,
+            readOnly: true,
+          ),
+
+          inputField(
+            label: 'Phone Number',
+            controller: phoneController,
+            keyboardType: TextInputType.phone,
+          ),
+
+          // BUSINESS INFORMATION
 
           sectionTitle('Business Information'),
-          Card(
-            color: colors.surface,
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                children: [
-                  inputField('Business Name', businessController, Icons.business_outlined),
-                  inputField('Business Email', businessEmailController, Icons.mail_outline,
-                      keyboardType: TextInputType.emailAddress),
-                ],
-              ),
-            ),
+
+          inputField(
+            label: 'Business Name',
+            controller: businessNameController,
           ),
 
-          sectionTitle('App Preferences'),
-          Card(
-            color: colors.surface,
-            child: Column(
-              children: [
-                SwitchListTile(
-                  title: const Text('Email Notifications'),
-                  subtitle: const Text('Receive updates through email'),
-                  value: emailNotifications,
-                  onChanged: (v) => setState(() => emailNotifications = v),
-                ),
-                const Divider(height: 1),
-                SwitchListTile(
-                  title: const Text('Task Reminders'),
-                  subtitle: const Text('Get reminders about upcoming tasks'),
-                  value: taskReminders,
-                  onChanged: (v) => setState(() => taskReminders = v),
-                ),
-                const Divider(height: 1),
-                SwitchListTile(
-                  title: const Text('Lead Notifications'),
-                  subtitle: const Text('Receive updates about leads'),
-                  value: leadNotifications,
-                  onChanged: (v) => setState(() => leadNotifications = v),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.dark_mode_outlined),
-                  title: const Text('App Theme'),
-                  subtitle: const Text('Choose light or dark appearance'),
-                  trailing: DropdownButton<String>(
-                    value: theme,
-                    items: const [
-                      DropdownMenuItem(value: 'Light', child: Text('Light')),
-                      DropdownMenuItem(value: 'Dark', child: Text('Dark')),
-                    ],
-                    onChanged: (v) {
-                      if (v != null) setState(() => theme = v);
-                    },
-                  ),
-                ),
-              ],
-            ),
+          inputField(
+            label: 'Business Address',
+            controller: businessAddressController,
           ),
 
-          const SizedBox(height: 22),
+          // PREFERENCES
+
+          sectionTitle('Preferences'),
+
+          settingSwitch(
+            title: 'Push Notifications',
+            subtitle: 'Receive app notifications',
+            value: notificationsEnabled,
+            onChanged: (value) {
+              setState(() {
+                notificationsEnabled = value;
+              });
+            },
+          ),
+
+          settingSwitch(
+            title: 'Email Notifications',
+            subtitle: 'Receive updates through email',
+            value: emailNotifications,
+            onChanged: (value) {
+              setState(() {
+                emailNotifications = value;
+              });
+            },
+          ),
+
+          settingSwitch(
+            title: 'Dark Mode',
+            subtitle: 'Enable dark theme',
+            value: darkModeEnabled,
+            onChanged: updateDarkMode,
+          ),
+
+          const SizedBox(height: 24),
+
+          // SAVE BUTTON
+
           SizedBox(
-            width: double.infinity,
+            height: 50,
             child: ElevatedButton.icon(
-              onPressed: saving ? null : saveSettings,
-              icon: saving
+              onPressed: isSaving ? null : saveSettings,
+              icon: isSaving
                   ? const SizedBox(
                       height: 18,
                       width: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                      ),
                     )
-                  : const Icon(Icons.save_outlined),
-              label: Text(saving ? 'Saving...' : 'Save Settings'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                  : const Icon(Icons.save),
+              label: Text(
+                isSaving ? 'Saving...' : 'Save Settings',
               ),
             ),
           ),
-          const SizedBox(height: 25),
+
+          // ACCOUNT SETTINGS
+
+          sectionTitle('Account Settings'),
+
+          Card(
+            child: ListTile(
+              leading: const Icon(
+                Icons.logout,
+                color: Colors.red,
+              ),
+              title: const Text('Logout'),
+              subtitle: const Text(
+                'Sign out from your account',
+              ),
+              trailing: loggingOut
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Icon(
+                      Icons.arrow_forward_ios,
+                    ),
+              onTap: loggingOut ? null : confirmLogout,
+            ),
+          ),
+
+          const SizedBox(height: 30),
         ],
       ),
     );

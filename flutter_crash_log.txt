@@ -1,0 +1,563 @@
+--------- beginning of main
+11-06 13:21:44.594   711  1135 I HalDevMgr: bestIfaceCreationProposal is null, requestIface=STA, existingIface=[name=wlan0 type=STA]
+11-06 13:21:47.636   711  1135 I HalDevMgr: bestIfaceCreationProposal is null, requestIface=STA, existingIface=[name=wlan0 type=STA]
+11-06 13:21:49.001  1907  1907 I adbd    : adbd service requested 'shell,v2,raw:dumpsys package com.google.android.gms'
+11-06 13:21:49.797   853   863 I artd    : GetBestInfo: odex next to the dex file (/data/app/~~7XmahKMfDHV94Ls0IcYSEA==/com.google.android.gms-xmWuQHVn_LbkROu7ojoGvQ==/oat/x86_64/base.odex) is kOatUpToDate with filter 'speed-profile' executable 'false'
+11-06 13:21:49.812   853   863 I artd    : GetBestInfo: dm (/data/app/~~7XmahKMfDHV94Ls0IcYSEA==/com.google.android.gms-xmWuQHVn_LbkROu7ojoGvQ==/split_AdsDynamite_installtime.dm) is kOatUpToDate with filter 'verify' executable 'false'
+11-06 13:21:49.827   853   863 I artd    : GetBestInfo: dm (/data/app/~~7XmahKMfDHV94Ls0IcYSEA==/com.google.android.gms-xmWuQHVn_LbkROu7ojoGvQ==/split_CronetDynamite_installtime.dm) is kOatUpToDate with filter 'verify' executable 'false'
+11-06 13:21:49.841   853   863 I artd    : GetBestInfo: dm (/data/app/~~7XmahKMfDHV94Ls0IcYSEA==/com.google.android.gms-xmWuQHVn_LbkROu7ojoGvQ==/split_DynamiteLoader_installtime.dm) is kOatUpToDate with filter 'verify' executable 'false'
+11-06 13:21:49.855   853   863 I artd    : GetBestInfo: dm (/data/app/~~7XmahKMfDHV94Ls0IcYSEA==/com.google.android.gms-xmWuQHVn_LbkROu7ojoGvQ==/split_DynamiteModulesA_installtime.dm) is kOatUpToDate with filter 'verify' executable 'false'
+11-06 13:21:49.861   853   863 I artd    : GetBestInfo: dm (/data/app/~~7XmahKMfDHV94Ls0IcYSEA==/com.google.android.gms-xmWuQHVn_LbkROu7ojoGvQ==/split_DynamiteModulesC_installtime.dm) is kOatUpToDate with filter 'verify' executable 'false'
+11-06 13:21:49.868   853   863 I artd    : GetBestInfo: dm (/data/app/~~7XmahKMfDHV94Ls0IcYSEA==/com.google.android.gms-xmWuQHVn_LbkROu7ojoGvQ==/split_GoogleCertificates_installtime.dm) is kOatUpToDate with filter 'verify' executable 'false'
+11-06 13:21:49.878   711   724 I system_server: Background concurrent mark compact GC freed 19MB AllocSpace bytes, 6(120KB) LOS objects, 41% free, 33MB/57MB, paused 8.418ms,4.640ms total 698.001ms
+11-06 13:21:49.882   853   862 I artd    : GetBestInfo: dm (/data/app/~~7XmahKMfDHV94Ls0IcYSEA==/com.google.android.gms-xmWuQHVn_LbkROu7ojoGvQ==/split_MapsDynamite_installtime.dm) is kOatUpToDate with filter 'verify' executable 'false'
+11-06 13:21:49.884  1922  1922 I AiAiTextClassifier: onDestroyTextClassificationSession = TextClassificationSessionId {7b89f398-2c23-40ff-9a2d-f92d6862514e}
+11-06 13:21:49.885   853   862 I artd    : GetBestInfo: dm (/data/app/~~7XmahKMfDHV94Ls0IcYSEA==/com.google.android.gms-xmWuQHVn_LbkROu7ojoGvQ==/split_MeasurementDynamite_installtime.dm) is kOatUpToDate with filter 'verify' executable 'false'
+11-06 13:21:49.898   853   863 I artd    : GetBestInfo: dm (/data/app/~~7XmahKMfDHV94Ls0IcYSEA==/com.google.android.gms-xmWuQHVn_LbkROu7ojoGvQ==/split_all_locale_splits.dm) is kOatUpToDate with filter 'verify' executable 'false'
+11-06 13:21:49.908   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/0000000e/dl-MlkitBarcodeUi.optional_261136100800.apk has no usable artifacts
+11-06 13:21:49.909   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/00000001/CronetDynamite.apk has no usable artifacts
+11-06 13:21:49.915   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/00000002/DynamiteLoader.apk has no usable artifacts
+11-06 13:21:49.936   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/00000005/GoogleCertificates.apk has no usable artifacts
+11-06 13:21:49.943   853   863 I artd    : GetBestInfo: vdex next to the dex file (/data/user/0/com.google.android.gms/app_dg_cache/9B174506499994C46A4FBE50136F4C1D8AB5237C/oat/x86_64/the.vdex) is kOatUpToDate with filter 'verify' executable 'false'
+11-06 13:21:49.952   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/0000000c/dl-TfliteDynamiteDynamite.integ_264010405100800.apk has no usable artifacts
+11-06 13:21:49.956   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/0000000f/dl-IdentityCredentialsPlatform.optional_261136100800.apk has no usable artifacts
+11-06 13:21:49.957   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/00000015/dl-IdentityCredentialsPlatform.optional_264330100800.apk has no usable artifacts
+11-06 13:21:49.971   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/0000000d/dl-Appsearch.optional_261136100800.apk has no usable artifacts
+11-06 13:21:49.979   853   862 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/00000016/dl-Appsearch.optional_264330100800.apk has no usable artifacts
+11-06 13:21:49.987   853   862 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/0000000a/dl-PlayCloudSearch.optional_261136100000.apk has no usable artifacts
+11-06 13:21:49.995   853   862 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/00000012/dl-PlayCloudSearch.optional_264330100000.apk has no usable artifacts
+11-06 13:21:50.001   853   862 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/00000007/MeasurementDynamite.apk has no usable artifacts
+11-06 13:21:50.007   853   862 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/00000013/dl-MlkitBarcodeUi.optional_264330100800.apk has no usable artifacts
+11-06 13:21:50.233   711  2937 W libbinder.Binder: Binder transaction to android.content.pm.IPackageManager, function: UNKNOWN_FUNCTION_NAME, code: 1598311760, took 1188ms. Data bytes: 80 Reply bytes: 4 Flags: 16
+11-06 13:21:50.657   711  1135 I HalDevMgr: bestIfaceCreationProposal is null, requestIface=STA, existingIface=[name=wlan0 type=STA]
+11-06 13:21:50.943  1407  1620 D SatelliteController: isInCarrierRoamingNbIotNtn: satellite is disabled
+11-06 13:21:50.943  1407  1620 D SatelliteController: getCarrierRoamingNtnConnectType: Checking connect type from PLMN config for subId: 1
+11-06 13:21:50.943  1407  1620 D TelephonyConfigUpdateInstallReceiver: getConfigParser: domain=satellite
+11-06 13:21:50.943  1407  1620 V SatelliteController: satelliteConfigParser is not ready
+11-06 13:21:50.943  1407  1620 D SatelliteController: isSatelliteAttachSupportedViaConfigupdater: return null (satelliteConfig is null)
+11-06 13:21:50.944  1407  1620 D SatelliteController: getSatellitePerPlmnConfiguration: invalid subId or not supported via carrier.
+11-06 13:21:50.952  1407  1620 D SatelliteController: getCarrierRoamingNtnConnectType: config: null
+11-06 13:21:50.953  1407  1620 D TelephonyConfigUpdateInstallReceiver: getConfigParser: domain=satellite
+11-06 13:21:50.953  1407  1620 V SatelliteController: satelliteConfigParser is not ready
+11-06 13:21:50.953  1407  1620 D SatelliteController: getCarrierRoamingNtnConnectTypeViaConfigUpdater: return null (satelliteConfig is null)
+11-06 13:21:50.994  1407  1620 D SatelliteController: getCarrierRoamingNtnConnectType: Falling back to global carrier config connect type: 0
+11-06 13:21:50.995  1407  1620 D TelephonyConfigUpdateInstallReceiver: getConfigParser: domain=satellite
+11-06 13:21:50.995  1407  1620 V SatelliteController: satelliteConfigParser is not ready
+11-06 13:21:50.995  1407  1620 D SatelliteController: isSatelliteAttachSupportedViaConfigupdater: return null (satelliteConfig is null)
+11-06 13:21:50.995  1407  1620 D SatelliteController: getCarrierRoamingNtnConnectType: Checking connect type from PLMN config for subId: 1
+11-06 13:21:50.995  1407  1620 D TelephonyConfigUpdateInstallReceiver: getConfigParser: domain=satellite
+11-06 13:21:50.995  1407  1620 V SatelliteController: satelliteConfigParser is not ready
+11-06 13:21:50.995  1407  1620 D SatelliteController: isSatelliteAttachSupportedViaConfigupdater: return null (satelliteConfig is null)
+11-06 13:21:51.004  1407  1620 D SatelliteController: getSatellitePerPlmnConfiguration: invalid subId or not supported via carrier.
+11-06 13:21:51.005  1407  1620 D SatelliteController: getCarrierRoamingNtnConnectType: config: null
+11-06 13:21:51.005  1407  1620 D TelephonyConfigUpdateInstallReceiver: getConfigParser: domain=satellite
+11-06 13:21:51.005  1407  1620 V SatelliteController: satelliteConfigParser is not ready
+11-06 13:21:51.005  1407  1620 D SatelliteController: getCarrierRoamingNtnConnectTypeViaConfigUpdater: return null (satelliteConfig is null)
+11-06 13:21:51.005  1407  1620 D SatelliteController: getCarrierRoamingNtnConnectType: Falling back to global carrier config connect type: 0
+11-06 13:21:51.005  1407  1620 D TelephonyConfigUpdateInstallReceiver: getConfigParser: domain=satellite
+11-06 13:21:51.005  1407  1620 V SatelliteController: satelliteConfigParser is not ready
+11-06 13:21:51.005  1407  1620 D SatelliteController: isSatelliteAttachSupportedViaConfigupdater: return null (satelliteConfig is null)
+11-06 13:21:53.666   711  1135 I HalDevMgr: bestIfaceCreationProposal is null, requestIface=STA, existingIface=[name=wlan0 type=STA]
+--------- beginning of system
+11-06 13:21:54.629  1236  1298 D ShellBackPreview: Finishing gesture with event action: 1
+11-06 13:21:54.629  1236  1298 D ShellBackPreview: onGestureFinished called while no gesture is started
+11-06 13:21:54.686   711  2952 W AS.PlaybackActivityMon: No piid assigned for invalid/internal port id 15
+11-06 13:21:54.687   711  2952 W AS.PlaybackActivityMon: No piid assigned for invalid/internal port id 15
+11-06 13:21:54.729   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:21:54.729   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:21:54.749   566   606 D AudioFlinger: mixer(0x710f3b0a8790) throttle end: throttle time(34)
+11-06 13:21:55.722  1236  1236 I Choreographer: Skipped 57 frames!  The application may be doing too much work on its main thread.
+11-06 13:21:55.729   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:21:55.729   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:21:55.831   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:21:55.831   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:21:55.845   566   597 I APM_AudioPolicyManager: getNewOutputDevices io 13 recent device override {AUDIO_DEVICE_OUT_SPEAKER, @:}
+11-06 13:21:56.677   711  1135 I HalDevMgr: bestIfaceCreationProposal is null, requestIface=STA, existingIface=[name=wlan0 type=STA]
+11-06 13:21:56.929   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:21:56.929   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:21:57.030   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:21:57.030   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:21:57.144   711  2937 W AS.PlaybackActivityMon: No piid assigned for invalid/internal port id 15
+11-06 13:21:57.144   711  2067 W AS.PlaybackActivityMon: No piid assigned for invalid/internal port id 15
+11-06 13:21:57.151   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:21:57.151   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:21:57.156  9741  9741 D DesktopExperienceFlags: Toggle override initialized to: false
+11-06 13:21:57.169   566   606 D AudioFlinger: mixer(0x710f3b0a8790) throttle end: throttle time(37)
+11-06 13:21:57.256   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:21:57.256   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:21:57.353   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:21:57.353   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:21:57.374   566   597 I APM_AudioPolicyManager: getNewOutputDevices io 13 recent device override {AUDIO_DEVICE_OUT_SPEAKER, @:}
+11-06 13:21:57.456   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:21:57.456   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:21:58.956  1907  1907 I adbd    : adbd service requested 'shell,v2,raw:dumpsys package com.google.android.gms'
+11-06 13:21:59.066   853   863 I artd    : GetBestInfo: odex next to the dex file (/data/app/~~7XmahKMfDHV94Ls0IcYSEA==/com.google.android.gms-xmWuQHVn_LbkROu7ojoGvQ==/oat/x86_64/base.odex) is kOatUpToDate with filter 'speed-profile' executable 'false'
+11-06 13:21:59.068   853   863 I artd    : GetBestInfo: dm (/data/app/~~7XmahKMfDHV94Ls0IcYSEA==/com.google.android.gms-xmWuQHVn_LbkROu7ojoGvQ==/split_AdsDynamite_installtime.dm) is kOatUpToDate with filter 'verify' executable 'false'
+11-06 13:21:59.068   853   863 I artd    : GetBestInfo: dm (/data/app/~~7XmahKMfDHV94Ls0IcYSEA==/com.google.android.gms-xmWuQHVn_LbkROu7ojoGvQ==/split_CronetDynamite_installtime.dm) is kOatUpToDate with filter 'verify' executable 'false'
+11-06 13:21:59.069   853   863 I artd    : GetBestInfo: dm (/data/app/~~7XmahKMfDHV94Ls0IcYSEA==/com.google.android.gms-xmWuQHVn_LbkROu7ojoGvQ==/split_DynamiteLoader_installtime.dm) is kOatUpToDate with filter 'verify' executable 'false'
+11-06 13:21:59.071   853   863 I artd    : GetBestInfo: dm (/data/app/~~7XmahKMfDHV94Ls0IcYSEA==/com.google.android.gms-xmWuQHVn_LbkROu7ojoGvQ==/split_DynamiteModulesA_installtime.dm) is kOatUpToDate with filter 'verify' executable 'false'
+11-06 13:21:59.072   853   863 I artd    : GetBestInfo: dm (/data/app/~~7XmahKMfDHV94Ls0IcYSEA==/com.google.android.gms-xmWuQHVn_LbkROu7ojoGvQ==/split_DynamiteModulesC_installtime.dm) is kOatUpToDate with filter 'verify' executable 'false'
+11-06 13:21:59.073   853   863 I artd    : GetBestInfo: dm (/data/app/~~7XmahKMfDHV94Ls0IcYSEA==/com.google.android.gms-xmWuQHVn_LbkROu7ojoGvQ==/split_GoogleCertificates_installtime.dm) is kOatUpToDate with filter 'verify' executable 'false'
+11-06 13:21:59.076   853   863 I artd    : GetBestInfo: dm (/data/app/~~7XmahKMfDHV94Ls0IcYSEA==/com.google.android.gms-xmWuQHVn_LbkROu7ojoGvQ==/split_MapsDynamite_installtime.dm) is kOatUpToDate with filter 'verify' executable 'false'
+11-06 13:21:59.078   853   863 I artd    : GetBestInfo: dm (/data/app/~~7XmahKMfDHV94Ls0IcYSEA==/com.google.android.gms-xmWuQHVn_LbkROu7ojoGvQ==/split_MeasurementDynamite_installtime.dm) is kOatUpToDate with filter 'verify' executable 'false'
+11-06 13:21:59.079   853   863 I artd    : GetBestInfo: dm (/data/app/~~7XmahKMfDHV94Ls0IcYSEA==/com.google.android.gms-xmWuQHVn_LbkROu7ojoGvQ==/split_all_locale_splits.dm) is kOatUpToDate with filter 'verify' executable 'false'
+11-06 13:21:59.080   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/0000000e/dl-MlkitBarcodeUi.optional_261136100800.apk has no usable artifacts
+11-06 13:21:59.081   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/00000001/CronetDynamite.apk has no usable artifacts
+11-06 13:21:59.081   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/00000002/DynamiteLoader.apk has no usable artifacts
+11-06 13:21:59.081   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/00000005/GoogleCertificates.apk has no usable artifacts
+11-06 13:21:59.083   853   863 I artd    : GetBestInfo: vdex next to the dex file (/data/user/0/com.google.android.gms/app_dg_cache/9B174506499994C46A4FBE50136F4C1D8AB5237C/oat/x86_64/the.vdex) is kOatUpToDate with filter 'verify' executable 'false'
+11-06 13:21:59.083   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/0000000c/dl-TfliteDynamiteDynamite.integ_264010405100800.apk has no usable artifacts
+11-06 13:21:59.084   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/0000000f/dl-IdentityCredentialsPlatform.optional_261136100800.apk has no usable artifacts
+11-06 13:21:59.086   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/00000015/dl-IdentityCredentialsPlatform.optional_264330100800.apk has no usable artifacts
+11-06 13:21:59.087   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/0000000d/dl-Appsearch.optional_261136100800.apk has no usable artifacts
+11-06 13:21:59.088   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/00000016/dl-Appsearch.optional_264330100800.apk has no usable artifacts
+11-06 13:21:59.089   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/0000000a/dl-PlayCloudSearch.optional_261136100000.apk has no usable artifacts
+11-06 13:21:59.090   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/00000012/dl-PlayCloudSearch.optional_264330100000.apk has no usable artifacts
+11-06 13:21:59.091   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/00000007/MeasurementDynamite.apk has no usable artifacts
+11-06 13:21:59.091   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/00000013/dl-MlkitBarcodeUi.optional_264330100800.apk has no usable artifacts
+11-06 13:21:59.473   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:21:59.473   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:21:59.507   711  2312 W AS.PlaybackActivityMon: No piid assigned for invalid/internal port id 15
+11-06 13:21:59.513   711  2937 W AS.PlaybackActivityMon: No piid assigned for invalid/internal port id 15
+11-06 13:21:59.553  9741  9741 D WindowOnBackDispatcher: setTopOnBackInvokedCallback (unwrapped): io.flutter.embedding.android.FlutterActivity$1@d83fa0
+11-06 13:21:59.553   711  2937 D CoreBackPreview: Window{b6a2369 u0 com.example.business_crm/com.example.business_crm.MainActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@631b187, mPriority=0, mIsAnimationCallback=true, mOverrideBehavior=0}
+11-06 13:21:59.581   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:21:59.583   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:21:59.679   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:21:59.679   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:21:59.687   711  1135 I HalDevMgr: bestIfaceCreationProposal is null, requestIface=STA, existingIface=[name=wlan0 type=STA]
+11-06 13:21:59.690   711  1168 I AdbWifiNetworkMonitor: Wi-Fi network available
+11-06 13:21:59.690   711  1168 I AdbWifiNetworkMonitor: Received the same Wi-Fi SSID. Ignoring.
+11-06 13:21:59.713   711  1141 W libbinder.IPCThreadState: Sending oneway calls to frozen process.
+11-06 13:21:59.714  6607  8150 I NullBinder: NullBinder for android.net.action.RECOMMEND_NETWORKS triggering remote TransactionTooLargeException due to Service without Chimera impl, calling uid: 1000, calling pid: 0
+11-06 13:21:59.714  6607  8150 W libbinder.Binder: Large reply transaction of 1056768 bytes, interface descriptor , function: UNKNOWN_FUNCTION_NAME, code: 1, flags: 17
+11-06 13:21:59.714   711  1141 W libbinder.IPCThreadState: Sending oneway calls to frozen process.
+11-06 13:21:59.719  1332  1512 D IpClient/wlan0: interfaceLinkStateChanged: ifindex 16 up
+11-06 13:21:59.720   711  1141 D ConnectivityService: NetReassign [no changes] [c 0] [a 2] [i 0]
+11-06 13:21:59.720  6607  7639 I NearbyMediums: Wifi changed new SSID: "AndroidWifi"
+11-06 13:21:59.720  6607  7639 I NearbyMediums: WifiLanConnectivityInfo is not changed, skip notify.
+11-06 13:21:59.728  1332  1512 D IpClient/wlan0: interfaceLinkStateChanged: ifindex 16 up
+11-06 13:21:59.734   566   597 I APM_AudioPolicyManager: getNewOutputDevices io 13 recent device override {AUDIO_DEVICE_OUT_SPEAKER, @:}
+11-06 13:21:59.781   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:21:59.781   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:21:59.883   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:21:59.883   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:21:59.986   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:21:59.986   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:00.087   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:00.088   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:00.214  6607  7639 I NearbySharing: Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-06 13:22:00.862   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:00.862   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:00.953  1407  1620 D SatelliteController: isInCarrierRoamingNbIotNtn: satellite is disabled
+11-06 13:22:00.953  1407  1620 D SatelliteController: getCarrierRoamingNtnConnectType: Checking connect type from PLMN config for subId: 1
+11-06 13:22:00.953  1407  1620 D TelephonyConfigUpdateInstallReceiver: getConfigParser: domain=satellite
+11-06 13:22:00.953  1407  1620 V SatelliteController: satelliteConfigParser is not ready
+11-06 13:22:00.953  1407  1620 D SatelliteController: isSatelliteAttachSupportedViaConfigupdater: return null (satelliteConfig is null)
+11-06 13:22:00.954  1407  1620 D SatelliteController: getSatellitePerPlmnConfiguration: invalid subId or not supported via carrier.
+11-06 13:22:00.955  1407  1620 D SatelliteController: getCarrierRoamingNtnConnectType: config: null
+11-06 13:22:00.955  1407  1620 D TelephonyConfigUpdateInstallReceiver: getConfigParser: domain=satellite
+11-06 13:22:00.955  1407  1620 V SatelliteController: satelliteConfigParser is not ready
+11-06 13:22:00.955  1407  1620 D SatelliteController: getCarrierRoamingNtnConnectTypeViaConfigUpdater: return null (satelliteConfig is null)
+11-06 13:22:00.955  1407  1620 D SatelliteController: getCarrierRoamingNtnConnectType: Falling back to global carrier config connect type: 0
+11-06 13:22:00.955  1407  1620 D TelephonyConfigUpdateInstallReceiver: getConfigParser: domain=satellite
+11-06 13:22:00.955  1407  1620 V SatelliteController: satelliteConfigParser is not ready
+11-06 13:22:00.955  1407  1620 D SatelliteController: isSatelliteAttachSupportedViaConfigupdater: return null (satelliteConfig is null)
+11-06 13:22:00.955  1407  1620 D SatelliteController: getCarrierRoamingNtnConnectType: Checking connect type from PLMN config for subId: 1
+11-06 13:22:00.955  1407  1620 D TelephonyConfigUpdateInstallReceiver: getConfigParser: domain=satellite
+11-06 13:22:00.955  1407  1620 V SatelliteController: satelliteConfigParser is not ready
+11-06 13:22:00.955  1407  1620 D SatelliteController: isSatelliteAttachSupportedViaConfigupdater: return null (satelliteConfig is null)
+11-06 13:22:00.955  1407  1620 D SatelliteController: getSatellitePerPlmnConfiguration: invalid subId or not supported via carrier.
+11-06 13:22:00.955  1407  1620 D SatelliteController: getCarrierRoamingNtnConnectType: config: null
+11-06 13:22:00.955  1407  1620 D TelephonyConfigUpdateInstallReceiver: getConfigParser: domain=satellite
+11-06 13:22:00.955  1407  1620 V SatelliteController: satelliteConfigParser is not ready
+11-06 13:22:00.955  1407  1620 D SatelliteController: getCarrierRoamingNtnConnectTypeViaConfigUpdater: return null (satelliteConfig is null)
+11-06 13:22:00.956  1407  1620 D SatelliteController: getCarrierRoamingNtnConnectType: Falling back to global carrier config connect type: 0
+11-06 13:22:00.956  1407  1620 D TelephonyConfigUpdateInstallReceiver: getConfigParser: domain=satellite
+11-06 13:22:00.956  1407  1620 V SatelliteController: satelliteConfigParser is not ready
+11-06 13:22:00.956  1407  1620 D SatelliteController: isSatelliteAttachSupportedViaConfigupdater: return null (satelliteConfig is null)
+11-06 13:22:00.962   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:00.962   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:01.061   711  2937 W AS.PlaybackActivityMon: No piid assigned for invalid/internal port id 15
+11-06 13:22:01.062   711  2067 W AS.PlaybackActivityMon: No piid assigned for invalid/internal port id 15
+11-06 13:22:01.063   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:01.063   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:01.164   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:01.164   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:01.269   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:01.269   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:01.295   566   597 I APM_AudioPolicyManager: getNewOutputDevices io 13 recent device override {AUDIO_DEVICE_OUT_SPEAKER, @:}
+11-06 13:22:01.380   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:01.380   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:01.484   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:01.484   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:02.590  9741  9741 I ImeTracker: com.example.business_crm:1e91ddb0: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT fromUser false userId 0 displayId 0
+11-06 13:22:02.598   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:02.598   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:02.602  9741  9741 I HWUI    : Using FreeType backend (prop=Auto)
+11-06 13:22:02.614  9741  9741 D InsetsController: show(ime())
+11-06 13:22:02.614  9741  9741 D InsetsController: Setting requestedVisibleTypes to 511 (was 503)
+11-06 13:22:02.616  6177  6177 I GoogleInputMethodService: GoogleInputMethodService.onFinishInput():2259 
+11-06 13:22:02.617  6177  6177 I Module  : DeviceLockedStatusModuleProvider$Module.updateDeviceLockedStatus():103 repeatCheckTimes = 0, locked = false
+11-06 13:22:02.617   711   836 W InputChannel-JNI: Channel already disposed.
+11-06 13:22:02.618  6177  6177 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1446 onStartInput(EditorInfo{EditorInfo{packageName=com.example.business_crm, inputType=8001, inputTypeString=Normal[AutoCorrect], enableLearning=true, autoCorrection=true, autoComplete=true, imeOptions=2000006, privateImeOptions=null, actionName=DONE, actionLabel=null, initialSelStart=0, initialSelEnd=0, initialCapsMode=0, label=null, fieldId=1, fieldName=null, extras=Bundle[mParcelledData.dataSize=168], hintText=null, hintLocales=[]}}, false)
+11-06 13:22:02.619  6177  6177 I AndroidIME: LatinIMEBase.updateInputViewCoverNavigation():322 Update input view padding, isNavbarOverInputWindow=true, bottom inset=63
+11-06 13:22:02.625  6177  6177 I Module  : DeviceLockedStatusModuleProvider$Module.updateDeviceLockedStatus():103 repeatCheckTimes = 1, locked = false
+11-06 13:22:02.627   711  2312 W PackageConfigPersister: App-specific configuration not found for packageName: com.example.business_crm and userId: 0
+11-06 13:22:02.627   711  2067 V AutofillSession: Primary service component name: ComponentInfo{com.google.android.gms/com.google.android.gms.autofill.service.AutofillService}, secondary service component name: ComponentInfo{com.android.credentialmanager/com.android.credentialmanager.autofill.CredentialAutofillService}
+11-06 13:22:02.628  6177  6177 I StylusModule: StylusModule.onUpdateToolType():774 Update tool type = 2
+11-06 13:22:02.629   711  2067 V SecondaryProviderHandler: Creating a secondary provider handler with component name, ComponentInfo{com.android.credentialmanager/com.android.credentialmanager.autofill.CredentialAutofillService}
+11-06 13:22:02.632   711  2067 D PresentationStatsEventLogger: Started new PresentationStatsEvent
+11-06 13:22:02.633   711  2067 I AppsFilter: interaction: PackageSetting{dd8612e com.example.business_crm/10235} -> PackageSetting{59be9f2 com.google.android.inputmethod.latin/10172} BLOCKED
+11-06 13:22:02.633   711  2067 W FillRequestEventLogger: Couldn't find packageName: com.google.android.inputmethod.latin
+11-06 13:22:02.639  6177  6177 I GoogleInputMethodService: GoogleInputMethodService.onStartInputView():1532 onStartInputView(EditorInfo{EditorInfo{packageName=com.example.business_crm, inputType=8001, inputTypeString=Normal[AutoCorrect], enableLearning=true, autoCorrection=true, autoComplete=true, imeOptions=2000006, privateImeOptions=null, actionName=DONE, actionLabel=null, initialSelStart=0, initialSelEnd=0, initialCapsMode=0, label=null, fieldId=1, fieldName=null, extras=Bundle[{androidx.core.view.inputmethod.EditorInfoCompat.STYLUS_HANDWRITING_ENABLED=true}], hintText=null, hintLocales=[]}}, false)
+11-06 13:22:02.644  6177  6177 I KeyboardHeightUtil: KeyboardHeightUtil.getOemKeyboardHeightRatio():81 systemKeyboardHeightRatio:1.000000.
+11-06 13:22:02.655  9741  9741 D InputConnectionAdaptor: The input method toggled cursor monitoring on
+11-06 13:22:02.663  9741  9741 I AssistStructure: Flattened final assist data: 428 bytes, containing 1 windows, 3 views
+11-06 13:22:02.664   711  2067 D AutofillSession: createPendingIntent for request 844
+11-06 13:22:02.665   711  2067 D ContentCapturePerUserService: Notified activity assist data for activity: Token{cb3bac4 ActivityRecord{116325718 u0 com.example.business_crm/.MainActivity t22}} without a session Id
+11-06 13:22:02.683  6177  6177 I AndroidIME: InputBundleManager.startInput():357 startInput2 restarting=false
+11-06 13:22:02.683  6177  6177 I AndroidIME: InputBundleManager.loadActiveInputBundleId():542 loadActiveInputBundleId: en-US, ime_english_united_states
+11-06 13:22:02.684  6177  6177 I InputBundle: InputBundle.activateIme():597 activateIme: INACTIVE, keyboardType=accessory
+11-06 13:22:02.686  6177  6177 I AndroidIME: AbstractIme.onActivate():95 LatinIme.onActivate() : EditorInfo = EditorInfo{packageName=com.example.business_crm, inputType=8001, inputTypeString=Normal[AutoCorrect], enableLearning=true, autoCorrection=true, autoComplete=true, imeOptions=2000006, privateImeOptions=null, actionName=DONE, actionLabel=null, initialSelStart=0, initialSelEnd=0, initialCapsMode=0, label=null, fieldId=1, fieldName=null, extras=Bundle[{androidx.core.view.inputmethod.EditorInfoCompat.STYLUS_HANDWRITING_ENABLED=true}], hintText=null, hintLocales=[]}, IncognitoMode = false, DeviceLocked = false
+11-06 13:22:02.694   711  1135 I HalDevMgr: bestIfaceCreationProposal is null, requestIface=STA, existingIface=[name=wlan0 type=STA]
+11-06 13:22:02.696   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:02.696   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:02.703  6177  6177 I InputBundle: InputBundle.consumeEvent():1051 Skip consuming an event as keyboard status is INACTIVE
+11-06 13:22:02.707  6177  6177 I Delight5Facilitator: Delight5Facilitator.initializeForIme():745 initializeForIme() : Locale = [en_US], layout = qwerty
+11-06 13:22:02.708  6177  6227 W ModuleManager: ModuleManager.loadModule():634 Module pyg is not available
+11-06 13:22:02.718  6177  6227 I NebulaeTrainingCacheMetricsProcessor: NebulaeTrainingCacheMetricsProcessor.processBeginSession():252 Begin training cache session: com.example.business_crm_1/
+11-06 13:22:02.727  6177  6177 I LatinIme: LatinIme.updateEnableInlineSuggestionsOnDecoderSideFlags():1277 inline flag updated to:false
+11-06 13:22:02.732  6177  6177 I LatinIme: LatinIme.updateEnableInlineSuggestionsOnDecoderSideFlags():1277 inline flag updated to:false
+11-06 13:22:02.780  6177  6177 I InputBundle: InputBundle.consumeEvent():1051 Skip consuming an event as keyboard status is INACTIVE
+11-06 13:22:02.782  6177  6177 I LatinIme: LatinIme.resetInputContext():2283 resetInputContext(): reason=1, externalEditsInfo=ExternalEditsInfo{action=0, offset=-1, text=null, originalText=null, edits=null}
+11-06 13:22:02.782  6177  6177 I InputBundle: InputBundle.consumeEvent():1051 Skip consuming an event as keyboard status is INACTIVE
+11-06 13:22:02.791  6177  6258 I Delight5Decoder: Delight5DecoderWrapper.setKeyboardLayout():551 setKeyboardLayout()
+11-06 13:22:02.793  6177  6177 I InputBundle: InputBundle.activateKeyboard():652 activateKeyboard: ACTIVE, type=ocu[keyboardType=accessory, payload=null]
+11-06 13:22:02.793  6177  6177 I KeyboardWrapper: KeyboardWrapper.activateKeyboard():592 activateKeyboard(): type=accessory, status=INACTIVE, imeDef=obp{stringId=ime_english_united_states, language=en-US, languageTag=en-US, processedConditions={writing_helper_enable_by_word_revert=false, true=true, enable_number_row=false, device=phone, enable_pk_simulator=false}, className=com.google.android.apps.inputmethod.libs.latin5.LatinIme, label=0, keyEventInterpreter=null, inlineComposing=true, autoCapital=true, announceAutoSelectedCandidate=true, statusIcon=0, indicatorIcon=0, indicatorLabel=US, displayAppCompletions=true, extraValues=obi{#0x7f0b02e5=TypedValue{t=0x3/d=0x0 "com.google.android.apps.inputmethod.libs.latin5.LatinIme"}}, processors=odh@369a535, unacceptableMetaKeys=4098, languageSpecificSettings=0, asciiCapable=true, alwaysShowSuggestions=false, useAsciiPasswordKeyboard=false, keyboardGroupDef=ocq@d34de61, phenotypeFlagId=0, localizationLanguageTag=null, supportsInlineSuggestion=true}
+11-06 13:22:02.794  6177  6177 I KeyboardManager: KeyboardManager.requestKeyboard():249 Creating keyboard accessory, imeId=ime_english_united_states, cacheKey=theme,!gsf,!pgsans,!pgsf,!use_system_font,BORDER,DYNAMIC_DARK_BRIGHT_KEY,FLAVOR_DPI=XXHDPI,IS_LIGHT,KEYBOARD_WIDTH_CATEGORY=NORMAL,KEY_BORDER_SHAPE=1,LIGHT_THEME=true,PHYSICAL_DIAGONAL=6.1297245,POPUP,SCREEN_SHORTEST_WIDTH=411,SCREEN_SHORTEST_WIDTH_NO_SCALE=411,SW400DP,XXHDPI,bottom4dp,bright_key_on_dynamic_color_dark_theme=true,enable_popup_on_keypress=true,keyboard_redesign_google_sans=true,non_linear_scale,noshadow,overlay_builtin_dynamic_color_light_base.binarypb:gm3-light-fffaf8fe-ff4e5e8b-4fee5571778e92b08ff4c2d3d15b9d3f,silkpopup
+11-06 13:22:02.800   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:02.800   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:02.801  6177  6177 I KeyboardWrapper: KeyboardWrapper.onKeyboardReady():226 onKeyboardReady(): type=accessory(accessory), kb=com.google.android.libraries.inputmethod.keyboard.impl.Keyboard@4dfae8a
+11-06 13:22:02.801  6177  6177 I KeyboardWrapper: KeyboardWrapper.doActivateKeyboard():624 doActivateKeyboard(): accessory
+11-06 13:22:02.802  6177  6177 W Keyboard: Keyboard.getKeyboardViewHelper():607 null helper is returned: keyboardDef=oci{processedConditions={}, globalConditions={}, className=com.google.android.libraries.inputmethod.keyboard.impl.Keyboard, resourceIds=[#0x7f17004e], initialStates=0, keyboardViewDefs=[], persistentStates=0, persistentStatesPrefKey=null, popupBubbleLayoutId=#0x0, recentKeyLayoutId=#0x0, recentKeyPopupLayoutId=#0x0, recentKeyType=null, rememberRecentKey=NONE, sessionStates=0}, type=HEADER, helpersCreated={}, context.getResources().getConfiguration(): {1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h914dp 420dpi nrml long compactNeeded port finger qwerty/v/v dpad/v winConfig={ mBounds=Rect(0, 0 - 1080, 2400) mAppBounds=Rect(0, 0 - 1080, 2400) mMaxBounds=Rect(0, 0 - 1080, 2400) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} as.2 s.21 fontWeightAdjustment=0}
+11-06 13:22:02.804  6177  6177 W Keyboard: Keyboard.getKeyboardViewHelper():607 null helper is returned: keyboardDef=oci{processedConditions={}, globalConditions={}, className=com.google.android.libraries.inputmethod.keyboard.impl.Keyboard, resourceIds=[#0x7f17004e], initialStates=0, keyboardViewDefs=[], persistentStates=0, persistentStatesPrefKey=null, popupBubbleLayoutId=#0x0, recentKeyLayoutId=#0x0, recentKeyPopupLayoutId=#0x0, recentKeyType=null, rememberRecentKey=NONE, sessionStates=0}, type=BODY, helpersCreated={}, context.getResources().getConfiguration(): {1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h914dp 420dpi nrml long compactNeeded port finger qwerty/v/v dpad/v winConfig={ mBounds=Rect(0, 0 - 1080, 2400) mAppBounds=Rect(0, 0 - 1080, 2400) mMaxBounds=Rect(0, 0 - 1080, 2400) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} as.2 s.21 fontWeightAdjustment=0}
+11-06 13:22:02.807  6177  6177 I GlobeKeyExtension: GlobeKeyExtension.getKeyboardInitialStates():186 
+11-06 13:22:02.814  6177  6177 W Keyboard: Keyboard.getKeyboardViewHelper():607 null helper is returned: keyboardDef=oci{processedConditions={}, globalConditions={}, className=com.google.android.libraries.inputmethod.keyboard.impl.Keyboard, resourceIds=[#0x7f17004e], initialStates=0, keyboardViewDefs=[], persistentStates=0, persistentStatesPrefKey=null, popupBubbleLayoutId=#0x0, recentKeyLayoutId=#0x0, recentKeyPopupLayoutId=#0x0, recentKeyType=null, rememberRecentKey=NONE, sessionStates=0}, type=HEADER, helpersCreated={}, context.getResources().getConfiguration(): {1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h914dp 420dpi nrml long compactNeeded port finger qwerty/v/v dpad/v winConfig={ mBounds=Rect(0, 0 - 1080, 2400) mAppBounds=Rect(0, 0 - 1080, 2400) mMaxBounds=Rect(0, 0 - 1080, 2400) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} as.2 s.21 fontWeightAdjustment=0}
+11-06 13:22:02.814  6177  6177 W Keyboard: Keyboard.getKeyboardViewHelper():607 null helper is returned: keyboardDef=oci{processedConditions={}, globalConditions={}, className=com.google.android.libraries.inputmethod.keyboard.impl.Keyboard, resourceIds=[#0x7f17004e], initialStates=0, keyboardViewDefs=[], persistentStates=0, persistentStatesPrefKey=null, popupBubbleLayoutId=#0x0, recentKeyLayoutId=#0x0, recentKeyPopupLayoutId=#0x0, recentKeyType=null, rememberRecentKey=NONE, sessionStates=0}, type=BODY, helpersCreated={}, context.getResources().getConfiguration(): {1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h914dp 420dpi nrml long compactNeeded port finger qwerty/v/v dpad/v winConfig={ mBounds=Rect(0, 0 - 1080, 2400) mAppBounds=Rect(0, 0 - 1080, 2400) mMaxBounds=Rect(0, 0 - 1080, 2400) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} as.2 s.21 fontWeightAdjustment=0}
+11-06 13:22:02.815  6177  6177 W Keyboard: Keyboard.getKeyboardViewHelper():607 null helper is returned: keyboardDef=oci{processedConditions={}, globalConditions={}, className=com.google.android.libraries.inputmethod.keyboard.impl.Keyboard, resourceIds=[#0x7f17004e], initialStates=0, keyboardViewDefs=[], persistentStates=0, persistentStatesPrefKey=null, popupBubbleLayoutId=#0x0, recentKeyLayoutId=#0x0, recentKeyPopupLayoutId=#0x0, recentKeyType=null, rememberRecentKey=NONE, sessionStates=0}, type=FLOATING_CANDIDATES, helpersCreated={}, context.getResources().getConfiguration(): {1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h914dp 420dpi nrml long compactNeeded port finger qwerty/v/v dpad/v winConfig={ mBounds=Rect(0, 0 - 1080, 2400) mAppBounds=Rect(0, 0 - 1080, 2400) mMaxBounds=Rect(0, 0 - 1080, 2400) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} as.2 s.21 fontWeightAdjustment=0}
+11-06 13:22:02.815  6177  6177 W Keyboard: Keyboard.getKeyboardViewHelper():607 null helper is returned: keyboardDef=oci{processedConditions={}, globalConditions={}, className=com.google.android.libraries.inputmethod.keyboard.impl.Keyboard, resourceIds=[#0x7f17004e], initialStates=0, keyboardViewDefs=[], persistentStates=0, persistentStatesPrefKey=null, popupBubbleLayoutId=#0x0, recentKeyLayoutId=#0x0, recentKeyPopupLayoutId=#0x0, recentKeyType=null, rememberRecentKey=NONE, sessionStates=0}, type=WIDGET, helpersCreated={}, context.getResources().getConfiguration(): {1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h914dp 420dpi nrml long compactNeeded port finger qwerty/v/v dpad/v winConfig={ mBounds=Rect(0, 0 - 1080, 2400) mAppBounds=Rect(0, 0 - 1080, 2400) mMaxBounds=Rect(0, 0 - 1080, 2400) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} as.2 s.21 fontWeightAdjustment=0}
+11-06 13:22:02.815  6177  6177 I KeyboardManager: KeyboardManager.requestKeyboard():249 Creating keyboard accessory_candidates_consumer, imeId=ime_english_united_states, cacheKey=theme,!gsf,!pgsans,!pgsf,!use_system_font,BORDER,DYNAMIC_DARK_BRIGHT_KEY,FLAVOR_DPI=XXHDPI,IS_LIGHT,KEYBOARD_WIDTH_CATEGORY=NORMAL,KEY_BORDER_SHAPE=1,LIGHT_THEME=true,PHYSICAL_DIAGONAL=6.1297245,POPUP,SCREEN_SHORTEST_WIDTH=411,SCREEN_SHORTEST_WIDTH_NO_SCALE=411,SW400DP,XXHDPI,bottom4dp,bright_key_on_dynamic_color_dark_theme=true,enable_popup_on_keypress=true,keyboard_redesign_google_sans=true,non_linear_scale,noshadow,overlay_builtin_dynamic_color_light_base.binarypb:gm3-light-fffaf8fe-ff4e5e8b-4fee5571778e92b08ff4c2d3d15b9d3f,silkpopup
+11-06 13:22:02.817  6177  6177 I KeyboardDefManager: KeyboardDefManager.requestKeyboardDef():181 requestKeyboardDef(): type=accessory_candidates_consumer, info=ocn{defIds=[#0x7f17004d], defIdsCacheKey=[2132213837]}
+11-06 13:22:02.817  6177  6177 I KeyboardDefManager: KeyboardDefManager.requestKeyboardDef():243 requestKeyboardDef(): getOrCreate from cache, info=ocn{defIds=[#0x7f17004d], defIdsCacheKey=[2132213837]}
+11-06 13:22:02.819  6177  6177 I KeyboardDefManager: KeyboardDefManager$1.onSuccess():277 requestKeyboardDef onSuccess(): info=ocn{defIds=[#0x7f17004d], defIdsCacheKey=[2132213837]}
+11-06 13:22:02.820  6177  6177 I GlobeKeyExtension: GlobeKeyExtension.getKeyboardInitialStates():186 
+11-06 13:22:02.821  6177  6177 W Keyboard: Keyboard.getKeyboardViewHelper():607 null helper is returned: keyboardDef=oci{processedConditions={}, globalConditions={global_theme_key=theme,!gsf,!pgsans,!pgsf,!use_system_font,BORDER,DYNAMIC_DARK_BRIGHT_KEY,FLAVOR_DPI=XXHDPI,IS_LIGHT,KEYBOARD_WIDTH_CATEGORY=NORMAL,KEY_BORDER_SHAPE=1,LIGHT_THEME=true,PHYSICAL_DIAGONAL=6.1297245,POPUP,SCREEN_SHORTEST_WIDTH=411,SCREEN_SHORTEST_WIDTH_NO_SCALE=411,SW400DP,XXHDPI,bottom4dp,bright_key_on_dynamic_color_dark_theme=true,enable_popup_on_keypress=true,keyboard_redesign_google_sans=true,non_linear_scale,noshadow,overlay_builtin_dynamic_color_light_base.binarypb:gm3-light-fffaf8fe-ff4e5e8b-4fee5571778e92b08ff4c2d3d15b9d3f,silkpopup, global_locale=en_US, global_density_dpi=420, global_orientation=1}, className=.latin.keyboard.AccessoryKeyboard, resourceIds=[#0x7f17004d], initialStates=0, keyboardViewDefs=[ocy{direction=null, id=#0x7f0b0229, isScalable=false, layoutId=#0x7f0e0030, type=FLOATING_CANDIDATES, touchable=true, defaultShow=false}], persistentStates=0, persistentStatesPrefKey=null, popupBubbleLayoutId=#0x7f0e0611, recentKeyLayoutId=#0x0, recentKeyPopupLayoutId=#0x0, recentKeyType=null, rememberRecentKey=NONE, sessionStates=0}, type=HEADER, helpersCreated={FLOATING_CANDIDATES=nnb@d36b61c}, context.getResources().getConfiguration(): {1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h914dp 420dpi nrml long compactNeeded port finger qwerty/v/v dpad/v winConfig={ mBounds=Rect(0, 0 - 1080, 2400) mAppBounds=Rect(0, 0 - 1080, 2400) mMaxBounds=Rect(0, 0 - 1080, 2400) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} as.2 s.21 fontWeightAdjustment=0}
+11-06 13:22:02.821  6177  6177 W Keyboard: Keyboard.getKeyboardViewHelper():607 null helper is returned: keyboardDef=oci{processedConditions={}, globalConditions={global_theme_key=theme,!gsf,!pgsans,!pgsf,!use_system_font,BORDER,DYNAMIC_DARK_BRIGHT_KEY,FLAVOR_DPI=XXHDPI,IS_LIGHT,KEYBOARD_WIDTH_CATEGORY=NORMAL,KEY_BORDER_SHAPE=1,LIGHT_THEME=true,PHYSICAL_DIAGONAL=6.1297245,POPUP,SCREEN_SHORTEST_WIDTH=411,SCREEN_SHORTEST_WIDTH_NO_SCALE=411,SW400DP,XXHDPI,bottom4dp,bright_key_on_dynamic_color_dark_theme=true,enable_popup_on_keypress=true,keyboard_redesign_google_sans=true,non_linear_scale,noshadow,overlay_builtin_dynamic_color_light_base.binarypb:gm3-light-fffaf8fe-ff4e5e8b-4fee5571778e92b08ff4c2d3d15b9d3f,silkpopup, global_locale=en_US, global_density_dpi=420, global_orientation=1}, className=.latin.keyboard.AccessoryKeyboard, resourceIds=[#0x7f17004d], initialStates=0, keyboardViewDefs=[ocy{direction=null, id=#0x7f0b0229, isScalable=false, layoutId=#0x7f0e0030, type=FLOATING_CANDIDATES, touchable=true, defaultShow=false}], persistentStates=0, persistentStatesPrefKey=null, popupBubbleLayoutId=#0x7f0e0611, recentKeyLayoutId=#0x0, recentKeyPopupLayoutId=#0x0, recentKeyType=null, rememberRecentKey=NONE, sessionStates=0}, type=BODY, helpersCreated={FLOATING_CANDIDATES=nnb@d36b61c}, context.getResources().getConfiguration(): {1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h914dp 420dpi nrml long compactNeeded port finger qwerty/v/v dpad/v winConfig={ mBounds=Rect(0, 0 - 1080, 2400) mAppBounds=Rect(0, 0 - 1080, 2400) mMaxBounds=Rect(0, 0 - 1080, 2400) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} as.2 s.21 fontWeightAdjustment=0}
+11-06 13:22:02.831  6177  6177 I AndroidIME: InputBundleManager.startInput():372 startInput() with ocu[keyboardType=accessory, payload=null]
+11-06 13:22:02.836  6177  6177 I PkModeUpdater: PkModeUpdater.onActivate():76 onActivate true true
+11-06 13:22:02.839  6177  6177 I AccessoryInputModeManager: AccessoryInputModeManager.onModeStarted():346 Accessory input mode started: PK
+11-06 13:22:02.846  6177  6177 W ExtensionWrapper: ExtensionWrapper.setAllowUpdateNavigationBarStyle():887 class kwe is not activate
+11-06 13:22:02.846  6177  6177 I WidgetViewShowingController: WidgetViewShowingController.showWidgetKeyboardInternal():532 Show companion widget
+11-06 13:22:02.851  6177  6177 W StatusViewController: StatusViewController.updateKeyboardView():46 Failed to inflate voice header view [UD]
+11-06 13:22:02.878  6177  6177 W ExtensionWrapper: ExtensionWrapper.setAllowUpdateNavigationBarStyle():887 class kwe is not activate
+11-06 13:22:02.880  6177  6177 I WidgetViewShowingPositionHandler: WidgetViewShowingPositionHandler.updateAvailableArea():199 update available area Rect(21, 84 - 1059, 2333)
+11-06 13:22:02.881  6177  6177 W NotificationCenter: NotificationCenter$NotificationQueue.notifyPendingNotificationsOnExecutor():877 Heavy notify work detected on UI thread: [kxw->kwa] takes 43ms
+11-06 13:22:02.882  6177  6177 W SupplementaryKeyboardsWrapper: SupplementaryKeyboardsWrapper.deactivateKeyboard():162 keyboard composing_text_consumer is not activated before!
+11-06 13:22:02.887  6177  6177 I GlobeKeyExtension: GlobeKeyExtension.onActivate():130 
+11-06 13:22:02.889  6177  6177 I KeyboardModeUtils: KeyboardModeUtils.getKeyboardBottomOffset():432 inch: 0.000000 ydpi: 420.000000 adjustKeyboardBottomByDisplaySize: false currentDensityDpi: 420 defaultDensityDpi: 420 keyboardBottomToScreenPx: 0 keyboardBottomToNavBarPx: -63 navBarHeight: 63
+11-06 13:22:02.890  6177  6177 I BaseKeyboardSizeHelper: BaseKeyboardSizeHelper.calculateMaxKeyboardBodyHeight():73 leave 281 height for app when ime window height:2274, header height:116 and isFullscreenMode:false, so the max keyboard body height is:1877
+11-06 13:22:02.891  6177  6177 I BaseKeyboardSizeHelper: BaseKeyboardSizeHelper.calculateMaxKeyboardBodyHeight():73 leave 281 height for app when ime window height:2274, header height:116 and isFullscreenMode:false, so the max keyboard body height is:1877
+11-06 13:22:02.891  6177  6177 I BaseKeyboardSizeHelper: BaseKeyboardSizeHelper.calculateMaxKeyboardBodyHeight():73 leave 281 height for app when ime window height:2274, header height:116 and isFullscreenMode:false, so the max keyboard body height is:1877
+11-06 13:22:02.891  6177  6177 I BaseKeyboardSizeHelper: BaseKeyboardSizeHelper.calculateMaxKeyboardBodyHeight():73 leave 281 height for app when ime window height:2274, header height:116 and isFullscreenMode:false, so the max keyboard body height is:1877
+11-06 13:22:02.892  6177  6177 W ExtensionWrapper: ExtensionWrapper.setExtensionViewVisibility():878 interface nqy is not activate
+11-06 13:22:02.895  6177  6177 I VoiceInputManagerWrapper: VoiceInputManagerWrapper.cancelShutdown():109 cancelShutdown()
+11-06 13:22:02.895  6177  6177 I VoiceInputManagerWrapper: VoiceInputManagerWrapper.syncLanguagePacks():121 syncLanguagePacks()
+11-06 13:22:02.897  6177  7167 I SpeechFactory: SpeechRecognitionFactory.maybeScheduleAutoPackDownloadForFallback():221 maybeScheduleAutoPackDownloadForFallback()
+11-06 13:22:02.897  6177  7167 I FallbackOnDeviceRecognitionProvider: FallbackOnDeviceRecognitionProvider.maybeScheduleAutoPackDownload():213 maybeScheduleAutoPackDownload() for language tag en-US
+11-06 13:22:02.899  6177  6177 I VoiceInputManager: VoiceInputManager.onKeyboardActivated():1204 onKeyboardActivated() [UD]
+11-06 13:22:02.899  6177  6177 I UniversalDictationUiProvider: UniversalDictationUiProvider.onActivate():63 onActivate() [UD]
+11-06 13:22:02.912  6177  6177 W AutoPasteSuggestionHelper: AutoPasteSuggestionHelper.setMaxWidthOfChipTextView():1079 Failed to get the width of the proactive suggestion view holder in HEADER.
+11-06 13:22:02.920  6177  6177 W AutoPasteSuggestionHelper: AutoPasteSuggestionHelper.setMaxWidthOfChipTextView():1079 Failed to get the width of the proactive suggestion view holder in HEADER.
+11-06 13:22:02.924  6177  6177 W AutoPasteSuggestionHelper: AutoPasteSuggestionHelper.setMaxWidthOfChipTextView():1079 Failed to get the width of the proactive suggestion view holder in WIDGET.
+11-06 13:22:02.925  6177  6177 I ProactiveSuggestionsHolderManager: ProactiveSuggestionsHolderManager$displaySuggestionsListener$1.display():238 Requesting to show proactive suggestions: CLIPBOARD PREEMPTIVE_WITH_SUPPRESSION in HEADER
+11-06 13:22:02.928  6177  6177 I ProactiveSuggestionsHolderManager: ProactiveSuggestionsHolderManager$displaySuggestionsListener$1.display():259 suggestions CLIPBOARD are pending to show on HEADER
+11-06 13:22:02.928  6177  6177 I ProactiveSuggestionsHolderManager: ProactiveSuggestionsHolderManager$displaySuggestionsListener$1.display():238 Requesting to show proactive suggestions: CLIPBOARD PREEMPTIVE_WITH_SUPPRESSION in FLOATING_CANDIDATES
+11-06 13:22:02.929  6177  6177 I ProactiveSuggestionsHolderManager: ProactiveSuggestionsHolderManager$displaySuggestionsListener$1.display():259 suggestions CLIPBOARD are pending to show on FLOATING_CANDIDATES
+11-06 13:22:02.929  6177  6177 I ProactiveSuggestionsHolderManager: ProactiveSuggestionsHolderManager$displaySuggestionsListener$1.display():238 Requesting to show proactive suggestions: CLIPBOARD PREEMPTIVE_WITH_SUPPRESSION in WIDGET
+11-06 13:22:02.929  6177  6177 I ProactiveSuggestionsHolderManager: ProactiveSuggestionsHolderManager$displaySuggestionsListener$1.display():259 suggestions CLIPBOARD are pending to show on WIDGET
+11-06 13:22:02.929  6177  6177 I ProactiveSuggestionsHolderManager: ProactiveSuggestionsHolderManager$displaySuggestionsListener$1.display():238 Requesting to show proactive suggestions: CLIPBOARD PREEMPTIVE_WITH_SUPPRESSION in HEADER
+11-06 13:22:02.929  6177  6177 I ProactiveSuggestionsHolderManager: ProactiveSuggestionsHolderManager$displaySuggestionsListener$1.display():259 suggestions CLIPBOARD are pending to show on HEADER
+11-06 13:22:02.929  6177  6177 I ProactiveSuggestionsHolderManager: ProactiveSuggestionsHolderManager$displaySuggestionsListener$1.display():238 Requesting to show proactive suggestions: CLIPBOARD PREEMPTIVE_WITH_SUPPRESSION in FLOATING_CANDIDATES
+11-06 13:22:02.929  6177  6177 I ProactiveSuggestionsHolderManager: ProactiveSuggestionsHolderManager$displaySuggestionsListener$1.display():259 suggestions CLIPBOARD are pending to show on FLOATING_CANDIDATES
+11-06 13:22:02.929  6177  6177 I ProactiveSuggestionsHolderManager: ProactiveSuggestionsHolderManager$displaySuggestionsListener$1.display():238 Requesting to show proactive suggestions: CLIPBOARD PREEMPTIVE_WITH_SUPPRESSION in WIDGET
+11-06 13:22:02.930  6177  6177 I ProactiveSuggestionsHolderManager: ProactiveSuggestionsHolderManager$displaySuggestionsListener$1.display():259 suggestions CLIPBOARD are pending to show on WIDGET
+11-06 13:22:02.933  6177  6177 I ContactNoticeModule: ContactNoticeModule.shouldPostContactPermissionNotice():148 Not post contact permission notice: not exceed waiting period since installation.
+11-06 13:22:02.934  6177  6177 I Module  : DeviceLockedStatusModuleProvider$Module.updateDeviceLockedStatus():103 repeatCheckTimes = 1, locked = false
+11-06 13:22:02.937  6177  6177 I VoiceImeExtension: VoiceImeExtension.shouldStartVoiceInputAutomaticallyInCurrentInputBox():384 No private IME option set to start voice input.
+11-06 13:22:02.939  6177 10096 I SystemHapticSettings: SystemHapticSettings.updateSystemVibrationState():63 update vibration state: true
+11-06 13:22:02.940  6177  6177 D ImeBackCallbackSender: Register OnBackInvokedCallback with priority=-1 at app window (packageName=com.example.business_crm)
+11-06 13:22:02.941  9741  9741 D WindowOnBackDispatcher: setTopOnBackInvokedCallback (unwrapped): android.view.ImeBackAnimationController@bdef264
+11-06 13:22:02.941   711  2067 D CoreBackPreview: Window{b6a2369 u0 com.example.business_crm/com.example.business_crm.MainActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@4660a95, mPriority=0, mIsAnimationCallback=true, mOverrideBehavior=0}
+11-06 13:22:02.944  6177  6177 I DeviceIntelligenceExtension: DeviceIntelligenceExtension.getInlineSuggestionsRequest():222 Inline suggestions disabled in stylus mode or vertical PK/Voice toolbar
+11-06 13:22:02.950   711  2937 D WindowManager: setClientSurface Surface(name=VRI-InputMethod#637)/@0x1f2e6e4 for 18e859c InputMethod
+11-06 13:22:02.951  6177  6177 I Surface : Creating surface for consumer unnamed-6177-8 with slotExpansion=1 for 64 slots
+11-06 13:22:02.955  6177  6177 I Surface : Creating surface for consumer VRI[InputMethod]#8(BLAST Consumer)8 with slotExpansion=1 for 64 slots
+11-06 13:22:02.955  6607  6607 D BoundBrokerSvc: onBind: Intent { act=com.google.firebase.dynamiclinks.service.START xflg=0x4 pkg=com.google.android.gms }
+11-06 13:22:02.955  6607  6607 D BoundBrokerSvc: Loading bound service for intent: Intent { act=com.google.firebase.dynamiclinks.service.START xflg=0x4 pkg=com.google.android.gms }
+11-06 13:22:02.969   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:02.969   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:03.072   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:03.072   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:03.098  6177  6177 I GoogleInputMethodService: GoogleInputMethodService$1.onKeyboardViewShown():344 onKeyboardViewShown: keyboardType=accessory, keyboardViewType=HEADER keyboardView=null
+11-06 13:22:03.099  6177  6177 W Keyboard: Keyboard.getKeyboardViewHelper():607 null helper is returned: keyboardDef=oci{processedConditions={}, globalConditions={}, className=com.google.android.libraries.inputmethod.keyboard.impl.Keyboard, resourceIds=[#0x7f17004e], initialStates=0, keyboardViewDefs=[], persistentStates=0, persistentStatesPrefKey=null, popupBubbleLayoutId=#0x0, recentKeyLayoutId=#0x0, recentKeyPopupLayoutId=#0x0, recentKeyType=null, rememberRecentKey=NONE, sessionStates=0}, type=BODY, helpersCreated={}, context.getResources().getConfiguration(): {1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h914dp 420dpi nrml long compactNeeded port finger qwerty/v/v dpad/v winConfig={ mBounds=Rect(0, 0 - 1080, 2400) mAppBounds=Rect(0, 0 - 1080, 2400) mMaxBounds=Rect(0, 0 - 1080, 2400) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} as.2 s.21 fontWeightAdjustment=0}
+11-06 13:22:03.099  6177  6177 I GoogleInputMethodService: GoogleInputMethodService$1.onKeyboardViewShown():344 onKeyboardViewShown: keyboardType=accessory, keyboardViewType=BODY keyboardView=null
+11-06 13:22:03.099  6177  6177 W Keyboard: Keyboard.getKeyboardViewHelper():607 null helper is returned: keyboardDef=oci{processedConditions={}, globalConditions={}, className=com.google.android.libraries.inputmethod.keyboard.impl.Keyboard, resourceIds=[#0x7f17004e], initialStates=0, keyboardViewDefs=[], persistentStates=0, persistentStatesPrefKey=null, popupBubbleLayoutId=#0x0, recentKeyLayoutId=#0x0, recentKeyPopupLayoutId=#0x0, recentKeyType=null, rememberRecentKey=NONE, sessionStates=0}, type=BODY, helpersCreated={}, context.getResources().getConfiguration(): {1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h914dp 420dpi nrml long compactNeeded port finger qwerty/v/v dpad/v winConfig={ mBounds=Rect(0, 0 - 1080, 2400) mAppBounds=Rect(0, 0 - 1080, 2400) mMaxBounds=Rect(0, 0 - 1080, 2400) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} as.2 s.21 fontWeightAdjustment=0}
+11-06 13:22:03.100  1236  1298 D WindowManagerShell: PipDesktopState: isPipInDesktopMode isAnyDeskActive=false isDisplayDesktopFirst=false
+11-06 13:22:03.106  6177  6177 W TooltipLifecycleManager: TooltipLifecycleManager.dismissTooltips():153 Tooltip with id spell_check_add_to_dictionary not found in tooltipManager.
+11-06 13:22:03.123   711   711 W FillRequestEventLogger: Shouldn't be logging AutofillFillRequestReported again for same event
+11-06 13:22:03.123   711   711 W FillResponseEventLogger: Shouldn't be logging AutofillFillRequestReported again for same event
+11-06 13:22:03.123   711   711 W PresentationStatsEventLogger: Empty dataset. Autofill ignoring log
+11-06 13:22:03.123   711   711 D AutofillSession: clearPendingIntentLocked
+11-06 13:22:03.125  6607  6607 D BoundBrokerSvc: onBind: Intent { act=com.google.android.gms.common.BIND_SHARED_PREFS xflg=0x4 pkg=com.google.android.gms }
+11-06 13:22:03.127  6607  6607 D BoundBrokerSvc: Loading bound service for intent: Intent { act=com.google.android.gms.common.BIND_SHARED_PREFS xflg=0x4 pkg=com.google.android.gms }
+11-06 13:22:03.129  4332  4332 V InlineSuggestionRenderService: handleDestroySuggestionViews called for 0:1344259063
+11-06 13:22:03.135  6607  6607 D BoundBrokerSvc: onBind: Intent { act=com.google.android.mdd.service.START dat=chimera-action:/... xflg=0x4 cmp=com.google.android.gms/.chimera.GmsApiService }
+11-06 13:22:03.135  6607  6607 D BoundBrokerSvc: Loading bound service for intent: Intent { act=com.google.android.mdd.service.START dat=chimera-action:/... xflg=0x4 cmp=com.google.android.gms/.chimera.GmsApiService }
+11-06 13:22:03.145  9741  9741 D FlutterJNI: Sending viewport metrics to the engine.
+11-06 13:22:03.152  9741  9741 W InteractionJankMonitor: Initializing without READ_DEVICE_CONFIG permission. enabled=false, interval=1, missedFrameThreshold=3, frameTimeThreshold=64, package=com.example.business_crm
+11-06 13:22:03.159  9741  9741 D FlutterJNI: Sending viewport metrics to the engine.
+11-06 13:22:03.176  9741  9741 D FlutterJNI: Sending viewport metrics to the engine.
+11-06 13:22:03.179   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:03.179   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:03.193  9741  9741 D FlutterJNI: Sending viewport metrics to the engine.
+11-06 13:22:03.208  9741  9741 D FlutterJNI: Sending viewport metrics to the engine.
+11-06 13:22:03.226  9741  9741 D FlutterJNI: Sending viewport metrics to the engine.
+11-06 13:22:03.244  9741  9741 D FlutterJNI: Sending viewport metrics to the engine.
+11-06 13:22:03.263  9741  9741 D FlutterJNI: Sending viewport metrics to the engine.
+11-06 13:22:03.282   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:03.282   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:03.282   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:03.300  9741  9741 D FlutterJNI: Sending viewport metrics to the engine.
+11-06 13:22:03.303  6177  6177 I Delight5Decoder: Delight5DecoderWrapper.setKeyboardLayout():551 setKeyboardLayout()
+11-06 13:22:03.318  9741  9741 D FlutterJNI: Sending viewport metrics to the engine.
+11-06 13:22:03.332  9741  9741 D FlutterJNI: Sending viewport metrics to the engine.
+11-06 13:22:03.344  9741  9741 D FlutterJNI: Sending viewport metrics to the engine.
+11-06 13:22:03.362  9741  9741 D FlutterJNI: Sending viewport metrics to the engine.
+11-06 13:22:03.378  9741  9741 I ImeTracker: com.example.business_crm:1e91ddb0: onShown
+11-06 13:22:03.379  9741  9741 D FlutterJNI: Sending viewport metrics to the engine.
+11-06 13:22:03.379  9741  9741 D FlutterJNI: Sending viewport metrics to the engine.
+11-06 13:22:03.381   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:03.382   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:03.382   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:03.482   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:03.482   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:03.482   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:03.507  6177  6258 I native  : I0000 00:00:1793951523.506982    6258 input-context-store.cc:340] Ignoring stale client request for FetchSuggestions
+11-06 13:22:03.512  6177  6177 W InputContextProxy: InputContextProxy.applyClientDiffInternal():933 Ignore [FetchSuggestions] diff due to stale request: 360<362, inputStateId=290, lastInputStateId=290
+11-06 13:22:03.584   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:03.584   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:03.584   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:03.669  1907  1907 I adbd    : adbd service requested 'shell,v2:getprop'
+11-06 13:22:03.685   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:03.685   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:03.685   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:03.703  1907  1907 I adbd    : adbd service requested 'shell,v2:getprop'
+11-06 13:22:03.722  1907  1907 I adbd    : adbd service requested 'shell,v2:wm size'
+11-06 13:22:03.808  6177  6258 I native  : I0000 00:00:1793951523.809620    6258 input-context-store.cc:340] Ignoring stale client request for FetchSuggestions
+11-06 13:22:03.809  6177  6177 W InputContextProxy: InputContextProxy.applyClientDiffInternal():933 Ignore [FetchSuggestions] diff due to stale request: 362<364, inputStateId=291, lastInputStateId=291
+11-06 13:22:04.045   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:04.045   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:04.045   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:04.163   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:04.163   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:04.163   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:04.177   519  3900 D android.hardware.audio@7.1-impl.ranchu: threadLoop: entering standby, frames: 7379904
+11-06 13:22:04.177   519  3900 D android.hardware.audio@7.1-impl.ranchu: ~TinyalsaSink: joining consumeThread
+11-06 13:22:04.178   519 10163 D android.hardware.audio@7.1-impl.ranchu: consumeThread: exiting
+11-06 13:22:04.230  6177  6258 I native  : I0000 00:00:1793951524.230739    6258 input-context-store.cc:340] Ignoring stale client request for FetchSuggestions
+11-06 13:22:04.232  6177  6177 W InputContextProxy: InputContextProxy.applyClientDiffInternal():933 Ignore [FetchSuggestions] diff due to stale request: 364<368, inputStateId=293, lastInputStateId=293
+11-06 13:22:04.328   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:04.328   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:04.328   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:04.470  6177  6258 I native  : I0000 00:00:1793951524.470502    6258 input-context-store.cc:340] Ignoring stale client request for FetchSuggestions
+11-06 13:22:04.471  6177  6177 W InputContextProxy: InputContextProxy.applyClientDiffInternal():933 Ignore [FetchSuggestions] diff due to stale request: 368<371, inputStateId=295, lastInputStateId=295
+11-06 13:22:04.477   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:04.477   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:04.477   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:04.944   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:04.945   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:04.945   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:05.446   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:05.446   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:05.446   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:05.547   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:05.547   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:05.547   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:05.661   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:05.661   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:05.661   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:05.664   711  2952 W AS.PlaybackActivityMon: No piid assigned for invalid/internal port id 15
+11-06 13:22:05.667   711  2937 W AS.PlaybackActivityMon: No piid assigned for invalid/internal port id 15
+11-06 13:22:05.704   711  1135 I HalDevMgr: bestIfaceCreationProposal is null, requestIface=STA, existingIface=[name=wlan0 type=STA]
+11-06 13:22:05.709  1332  1512 D IpClient/wlan0: interfaceLinkStateChanged: ifindex 16 up
+11-06 13:22:05.721  1332  1512 D IpClient/wlan0: interfaceLinkStateChanged: ifindex 16 up
+11-06 13:22:05.762   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:05.762   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:05.762   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:05.829   566   597 I APM_AudioPolicyManager: getNewOutputDevices io 13 recent device override {AUDIO_DEVICE_OUT_SPEAKER, @:}
+11-06 13:22:05.866   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:05.866   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:05.866   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:05.966   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:05.966   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:05.966   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:06.039  9741  9741 I ImeTracker: com.example.business_crm:bade8015: onRequestHide at ORIGIN_CLIENT reason HIDE_SOFT_INPUT fromUser false userId 0 displayId 0
+11-06 13:22:06.039  9741  9741 D InsetsController: hide(ime())
+11-06 13:22:06.039  9741  9741 D WindowOnBackDispatcher: setTopOnBackInvokedCallback (unwrapped): io.flutter.embedding.android.FlutterActivity$1@d83fa0
+11-06 13:22:06.039  9741  9741 D InsetsController: Setting requestedVisibleTypes to 503 (was 511)
+11-06 13:22:06.040   711  2312 D CoreBackPreview: Window{b6a2369 u0 com.example.business_crm/com.example.business_crm.MainActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@cc2eac, mPriority=0, mIsAnimationCallback=true, mOverrideBehavior=0}
+11-06 13:22:06.041  9741  9741 D CompatChangeReporter: Compat change id reported: 395521150; UID 10235; state: ENABLED
+11-06 13:22:06.045   711  2067 I ImeTracker: system_server:ecb7b68: onRequestShow at ORIGIN_SERVER reason IME_REQUESTED_CHANGED_LISTENER fromUser false displayId 0
+11-06 13:22:06.048  9741  9741 D FlutterJNI: Sending viewport metrics to the engine.
+11-06 13:22:06.052  1236  1298 D WindowManagerShell: PipDesktopState: isPipInDesktopMode isAnyDeskActive=false isDisplayDesktopFirst=false
+11-06 13:22:06.055   711   736 I ImeTracker: system_server:ecb7b68: onCancelled at PHASE_SERVER_ALREADY_VISIBLE
+11-06 13:22:06.057  6177  6177 I StylusModule: StylusModule.onUpdateToolType():774 Update tool type = 2
+11-06 13:22:06.069   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:06.070   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:06.070   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:06.076  9741  9766 I le.business_crm: Background concurrent mark compact GC freed 1879KB AllocSpace bytes, 0(0B) LOS objects, 49% free, 4466KB/8933KB, paused 1.458ms,5.915ms total 37.167ms
+11-06 13:22:06.081   711   737 I ImeTracker: system_server:441e7311: onRequestShow at ORIGIN_SERVER reason CONTROLS_CHANGED fromUser false displayId 0
+11-06 13:22:06.137  9741  9741 D FlutterJNI: Sending viewport metrics to the engine.
+11-06 13:22:06.138  9741  9741 I ImeTracker: system_server:441e7311: onCancelled at PHASE_CLIENT_ON_CONTROLS_CHANGED
+11-06 13:22:06.142  9741  9741 D WindowOnBackDispatcher: setTopOnBackInvokedCallback (unwrapped): android.app.Activity$$ExternalSyntheticLambda0@dd8888b
+11-06 13:22:06.144  9741  9741 D FlutterJNI: Sending viewport metrics to the engine.
+11-06 13:22:06.147   711  2067 D CoreBackPreview: Window{b6a2369 u0 com.example.business_crm/com.example.business_crm.MainActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@3a3777b, mPriority=-1, mIsAnimationCallback=false, mOverrideBehavior=0}
+11-06 13:22:06.170   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:06.170   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:06.170   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:06.173  9741  9741 D FlutterJNI: Sending viewport metrics to the engine.
+11-06 13:22:06.176  9741  9741 D FlutterJNI: Sending viewport metrics to the engine.
+11-06 13:22:06.195  9741  9741 D FlutterJNI: Sending viewport metrics to the engine.
+11-06 13:22:06.279   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:06.279   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:06.279   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:06.285  9741  9741 D FlutterJNI: Sending viewport metrics to the engine.
+11-06 13:22:06.292  9741  9741 D FlutterJNI: Sending viewport metrics to the engine.
+11-06 13:22:06.343  9741  9741 D FlutterJNI: Sending viewport metrics to the engine.
+11-06 13:22:06.344  6177  6177 I GoogleInputMethodService: GoogleInputMethodService.onFinishInputView():1661 onFinishInputView(false)
+11-06 13:22:06.344  6177  6177 W ExtensionWrapper: ExtensionWrapper.setAllowUpdateNavigationBarStyle():887 class kwe is not activate
+11-06 13:22:06.344  9741  9741 D FlutterJNI: Sending viewport metrics to the engine.
+11-06 13:22:06.352   711   836 W InputChannel-JNI: Channel already disposed.
+11-06 13:22:06.354  6177  6177 I KeyboardViewController: KeyboardViewController.hide():988 Requesting to hide sub view with id 2131436909 #0x7f0b256d which doesn't exist in current keyboard view
+11-06 13:22:06.358  6177  6177 W ExtensionWrapper: ExtensionWrapper.setAllowUpdateNavigationBarStyle():887 class kwe is not activate
+11-06 13:22:06.359  6177  6177 W SupplementaryKeyboardsWrapper: SupplementaryKeyboardsWrapper.deactivateKeyboard():162 keyboard composing_text_consumer is not activated before!
+11-06 13:22:06.359  6177  6177 I GlobeKeyExtension: GlobeKeyExtension.onDeactivate():154 
+11-06 13:22:06.360  6177  6177 W TooltipLifecycleManager: TooltipLifecycleManager.dismissTooltips():153 Tooltip with id spell_check_add_to_dictionary not found in tooltipManager.
+11-06 13:22:06.360  6177  6177 I VoiceInputManagerWrapper: VoiceInputManagerWrapper.shutdown():131 shutdown()
+11-06 13:22:06.361  6177  6177 I UniversalDictationUiProvider: UniversalDictationUiProvider.onDeactivate():69 onDeactivate() [UD]
+11-06 13:22:06.364  6177  6177 I InputBundle: InputBundle.consumeEvent():1051 Skip consuming an event as keyboard status is INACTIVE
+11-06 13:22:06.370  6177  6177 I AndroidIME: AbstractIme.onDeactivate():213 LatinIme.onDeactivate()
+11-06 13:22:06.373  6177  6227 W ModuleManager: ModuleManager.loadModule():634 Module pyg is not available
+11-06 13:22:06.374  6177  6227 I NebulaeTrainingCacheMetricsProcessor: NebulaeTrainingCacheMetricsProcessor.processEndSession():616 End training cache session: com.example.business_crm_1/
+11-06 13:22:06.376  6177  6227 I NebulaeTrainingCacheMetricsProcessor: NebulaeTrainingCacheMetricsProcessor.processEndSession():657 No input action collection in this session, skip logging.
+11-06 13:22:06.379  6177  6177 I PrimesLoggerHolder: FrameMetricServiceImpl.stopAsFuture():213 Measurement not found: OnConfigurationChanged
+11-06 13:22:06.379  6177  6177 D ImeBackCallbackSender: Unregister OnBackInvokedCallback at app window (packageName=com.example.business_crm)
+11-06 13:22:06.379  6177  6177 I ImeTracker: com.example.business_crm:bade8015: onHidden
+11-06 13:22:06.380   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:06.381   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:06.383  6177  6177 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1446 onStartInput(EditorInfo{EditorInfo{packageName=com.example.business_crm, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=0, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, true)
+11-06 13:22:06.383  6177  6177 W SessionManager: SessionManager.beginSession():72 Try to begin an already begun session [INPUT_SESSION], end it first
+11-06 13:22:06.384  6177  6177 I AndroidIME: LatinIMEBase.updateInputViewCoverNavigation():322 Update input view padding, isNavbarOverInputWindow=true, bottom inset=63
+11-06 13:22:06.386  6177  6177 I Module  : DeviceLockedStatusModuleProvider$Module.updateDeviceLockedStatus():103 repeatCheckTimes = 1, locked = false
+11-06 13:22:06.387   711  2952 W PackageConfigPersister: App-specific configuration not found for packageName: com.example.business_crm and userId: 0
+11-06 13:22:06.395  6177  6227 I OnDeviceWmrCalculator: OnDeviceWmrCalculator.calculateWmr():94 WMR: 0.0000 (0 / 1)
+11-06 13:22:06.482   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:06.482   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:06.908   711  2067 I ImeTracker: system_server:175fee02: onRequestHide at ORIGIN_SERVER reason IME_REQUESTED_CHANGED_LISTENER fromUser false displayId 0
+11-06 13:22:06.935   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:06.935   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:06.936   711   736 I ImeTracker: system_server:175fee02: onCancelled at PHASE_SERVER_SHOULD_HIDE
+11-06 13:22:07.033   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:07.033   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:08.155  6607  6616 I libbinder.IPCThreadState: oneway function results for code 1 on binder at 0x790ab8c403d0 will be dropped but finished with status UNKNOWN_TRANSACTION and reply parcel size 80
+11-06 13:22:08.708   711  1168 I AdbWifiNetworkMonitor: Wi-Fi network available
+11-06 13:22:08.708   711  1168 I AdbWifiNetworkMonitor: Received the same Wi-Fi SSID. Ignoring.
+11-06 13:22:08.742   519  3900 D android.hardware.audio@7.1-impl.ranchu: threadLoop: entering standby, frames: 7528960
+11-06 13:22:08.742   519  3900 D android.hardware.audio@7.1-impl.ranchu: ~TinyalsaSink: joining consumeThread
+11-06 13:22:08.742   519 10186 D android.hardware.audio@7.1-impl.ranchu: consumeThread: exiting
+11-06 13:22:08.742   711  1135 I HalDevMgr: bestIfaceCreationProposal is null, requestIface=STA, existingIface=[name=wlan0 type=STA]
+11-06 13:22:08.746   711  1141 W libbinder.IPCThreadState: Sending oneway calls to frozen process.
+11-06 13:22:08.746   711  1141 W libbinder.IPCThreadState: Sending oneway calls to frozen process.
+11-06 13:22:08.747   711  1141 D ConnectivityService: NetReassign [no changes] [c 0] [a 0] [i 0]
+11-06 13:22:08.748  6607  7639 I NearbyMediums: Wifi changed new SSID: "AndroidWifi"
+11-06 13:22:08.748  6607  7639 I NearbyMediums: WifiLanConnectivityInfo is not changed, skip notify.
+11-06 13:22:08.752  6607  8150 I NullBinder: NullBinder for android.net.action.RECOMMEND_NETWORKS triggering remote TransactionTooLargeException due to Service without Chimera impl, calling uid: 1000, calling pid: 0
+11-06 13:22:08.752  6607  8150 W libbinder.Binder: Large reply transaction of 1056768 bytes, interface descriptor , function: UNKNOWN_FUNCTION_NAME, code: 1, flags: 17
+11-06 13:22:08.993  1907  1907 I adbd    : adbd service requested 'shell,v2,raw:dumpsys package com.google.android.gms'
+11-06 13:22:09.088   711  1210 D androidtc: Initializing SystemTextClassifier, type = System
+11-06 13:22:09.089  1922  1922 I AiAiTextClassifier: onCreateTextClassificationSession = TextClassificationSessionId {77e3b423-a235-4be2-b490-b28d31d619db}
+11-06 13:22:09.098  1236  1236 I ClipboardListener: Clipboard overlay suppressed.
+11-06 13:22:09.103  6177 10139 D androidtc: Initializing SystemTextClassifier, type = System
+11-06 13:22:09.105  1922  2339 I AiAiTranslate: C2T - not in a conversation
+11-06 13:22:09.109  1922  2354 I AiAiTextClassifier: GenerateLinks did not find valid links, returning empty result
+11-06 13:22:09.112  1236  1236 I ClipboardListener: Clipboard overlay suppressed.
+11-06 13:22:09.115   853   863 I artd    : GetBestInfo: odex next to the dex file (/data/app/~~7XmahKMfDHV94Ls0IcYSEA==/com.google.android.gms-xmWuQHVn_LbkROu7ojoGvQ==/oat/x86_64/base.odex) is kOatUpToDate with filter 'speed-profile' executable 'false'
+11-06 13:22:09.116  1922  2354 I AiAiTextClassifier: GenerateLinks did not find valid links, returning empty result
+11-06 13:22:09.117   853   863 I artd    : GetBestInfo: dm (/data/app/~~7XmahKMfDHV94Ls0IcYSEA==/com.google.android.gms-xmWuQHVn_LbkROu7ojoGvQ==/split_AdsDynamite_installtime.dm) is kOatUpToDate with filter 'verify' executable 'false'
+11-06 13:22:09.118   853   863 I artd    : GetBestInfo: dm (/data/app/~~7XmahKMfDHV94Ls0IcYSEA==/com.google.android.gms-xmWuQHVn_LbkROu7ojoGvQ==/split_CronetDynamite_installtime.dm) is kOatUpToDate with filter 'verify' executable 'false'
+11-06 13:22:09.119   853   863 I artd    : GetBestInfo: dm (/data/app/~~7XmahKMfDHV94Ls0IcYSEA==/com.google.android.gms-xmWuQHVn_LbkROu7ojoGvQ==/split_DynamiteLoader_installtime.dm) is kOatUpToDate with filter 'verify' executable 'false'
+11-06 13:22:09.120   853   863 I artd    : GetBestInfo: dm (/data/app/~~7XmahKMfDHV94Ls0IcYSEA==/com.google.android.gms-xmWuQHVn_LbkROu7ojoGvQ==/split_DynamiteModulesA_installtime.dm) is kOatUpToDate with filter 'verify' executable 'false'
+11-06 13:22:09.121   853   863 I artd    : GetBestInfo: dm (/data/app/~~7XmahKMfDHV94Ls0IcYSEA==/com.google.android.gms-xmWuQHVn_LbkROu7ojoGvQ==/split_DynamiteModulesC_installtime.dm) is kOatUpToDate with filter 'verify' executable 'false'
+11-06 13:22:09.122   853   863 I artd    : GetBestInfo: dm (/data/app/~~7XmahKMfDHV94Ls0IcYSEA==/com.google.android.gms-xmWuQHVn_LbkROu7ojoGvQ==/split_GoogleCertificates_installtime.dm) is kOatUpToDate with filter 'verify' executable 'false'
+11-06 13:22:09.123   853   863 I artd    : GetBestInfo: dm (/data/app/~~7XmahKMfDHV94Ls0IcYSEA==/com.google.android.gms-xmWuQHVn_LbkROu7ojoGvQ==/split_MapsDynamite_installtime.dm) is kOatUpToDate with filter 'verify' executable 'false'
+11-06 13:22:09.124   853   863 I artd    : GetBestInfo: dm (/data/app/~~7XmahKMfDHV94Ls0IcYSEA==/com.google.android.gms-xmWuQHVn_LbkROu7ojoGvQ==/split_MeasurementDynamite_installtime.dm) is kOatUpToDate with filter 'verify' executable 'false'
+11-06 13:22:09.125   853   863 I artd    : GetBestInfo: dm (/data/app/~~7XmahKMfDHV94Ls0IcYSEA==/com.google.android.gms-xmWuQHVn_LbkROu7ojoGvQ==/split_all_locale_splits.dm) is kOatUpToDate with filter 'verify' executable 'false'
+11-06 13:22:09.126   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/0000000e/dl-MlkitBarcodeUi.optional_261136100800.apk has no usable artifacts
+11-06 13:22:09.127   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/00000001/CronetDynamite.apk has no usable artifacts
+11-06 13:22:09.127   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/00000002/DynamiteLoader.apk has no usable artifacts
+11-06 13:22:09.127   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/00000005/GoogleCertificates.apk has no usable artifacts
+11-06 13:22:09.128   853   863 I artd    : GetBestInfo: vdex next to the dex file (/data/user/0/com.google.android.gms/app_dg_cache/9B174506499994C46A4FBE50136F4C1D8AB5237C/oat/x86_64/the.vdex) is kOatUpToDate with filter 'verify' executable 'false'
+11-06 13:22:09.129   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/0000000c/dl-TfliteDynamiteDynamite.integ_264010405100800.apk has no usable artifacts
+11-06 13:22:09.130   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/0000000f/dl-IdentityCredentialsPlatform.optional_261136100800.apk has no usable artifacts
+11-06 13:22:09.131   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/00000015/dl-IdentityCredentialsPlatform.optional_264330100800.apk has no usable artifacts
+11-06 13:22:09.133   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/0000000d/dl-Appsearch.optional_261136100800.apk has no usable artifacts
+11-06 13:22:09.134   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/00000016/dl-Appsearch.optional_264330100800.apk has no usable artifacts
+11-06 13:22:09.135   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/0000000a/dl-PlayCloudSearch.optional_261136100000.apk has no usable artifacts
+11-06 13:22:09.136   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/00000012/dl-PlayCloudSearch.optional_264330100000.apk has no usable artifacts
+11-06 13:22:09.136   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/00000007/MeasurementDynamite.apk has no usable artifacts
+11-06 13:22:09.137   853   863 I artd    : GetBestInfo: /data/user_de/0/com.google.android.gms/app_chimera/m/00000013/dl-MlkitBarcodeUi.optional_264330100800.apk has no usable artifacts
+11-06 13:22:09.250  6607  7639 I NearbySharing: Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-06 13:22:10.954  1407  1620 D SatelliteController: isInCarrierRoamingNbIotNtn: satellite is disabled
+11-06 13:22:10.954  1407  1620 D SatelliteController: getCarrierRoamingNtnConnectType: Checking connect type from PLMN config for subId: 1
+11-06 13:22:10.954  1407  1620 D TelephonyConfigUpdateInstallReceiver: getConfigParser: domain=satellite
+11-06 13:22:10.955  1407  1620 V SatelliteController: satelliteConfigParser is not ready
+11-06 13:22:10.955  1407  1620 D SatelliteController: isSatelliteAttachSupportedViaConfigupdater: return null (satelliteConfig is null)
+11-06 13:22:10.962  1407  1620 D SatelliteController: getSatellitePerPlmnConfiguration: invalid subId or not supported via carrier.
+11-06 13:22:10.962  1407  1620 D SatelliteController: getCarrierRoamingNtnConnectType: config: null
+11-06 13:22:10.962  1407  1620 D TelephonyConfigUpdateInstallReceiver: getConfigParser: domain=satellite
+11-06 13:22:10.962  1407  1620 V SatelliteController: satelliteConfigParser is not ready
+11-06 13:22:10.963  1407  1620 D SatelliteController: getCarrierRoamingNtnConnectTypeViaConfigUpdater: return null (satelliteConfig is null)
+11-06 13:22:10.964  1407  1620 D SatelliteController: getCarrierRoamingNtnConnectType: Falling back to global carrier config connect type: 0
+11-06 13:22:10.965  1407  1620 D TelephonyConfigUpdateInstallReceiver: getConfigParser: domain=satellite
+11-06 13:22:10.965  1407  1620 V SatelliteController: satelliteConfigParser is not ready
+11-06 13:22:10.965  1407  1620 D SatelliteController: isSatelliteAttachSupportedViaConfigupdater: return null (satelliteConfig is null)
+11-06 13:22:10.965  1407  1620 D SatelliteController: getCarrierRoamingNtnConnectType: Checking connect type from PLMN config for subId: 1
+11-06 13:22:10.965  1407  1620 D TelephonyConfigUpdateInstallReceiver: getConfigParser: domain=satellite
+11-06 13:22:10.965  1407  1620 V SatelliteController: satelliteConfigParser is not ready
+11-06 13:22:10.965  1407  1620 D SatelliteController: isSatelliteAttachSupportedViaConfigupdater: return null (satelliteConfig is null)
+11-06 13:22:10.967  1407  1620 D SatelliteController: getSatellitePerPlmnConfiguration: invalid subId or not supported via carrier.
+11-06 13:22:10.967  1407  1620 D SatelliteController: getCarrierRoamingNtnConnectType: config: null
+11-06 13:22:10.967  1407  1620 D TelephonyConfigUpdateInstallReceiver: getConfigParser: domain=satellite
+11-06 13:22:10.967  1407  1620 V SatelliteController: satelliteConfigParser is not ready
+11-06 13:22:10.967  1407  1620 D SatelliteController: getCarrierRoamingNtnConnectTypeViaConfigUpdater: return null (satelliteConfig is null)
+11-06 13:22:10.971  1407  1620 D SatelliteController: getCarrierRoamingNtnConnectType: Falling back to global carrier config connect type: 0
+11-06 13:22:10.971  1407  1620 D TelephonyConfigUpdateInstallReceiver: getConfigParser: domain=satellite
+11-06 13:22:10.971  1407  1620 V SatelliteController: satelliteConfigParser is not ready
+11-06 13:22:10.971  1407  1620 D SatelliteController: isSatelliteAttachSupportedViaConfigupdater: return null (satelliteConfig is null)
+11-06 13:22:10.995   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:10.995   572   613 W skia    : AGTM parsing failed flags.readFromStream(s) at 159
+11-06 13:22:11.750   711  1135 I HalDevMgr: bestIfaceCreationProposal is null, requestIface=STA, existingIface=[name=wlan0 type=STA]
+11-06 13:22:11.770  1332  1512 D IpClient/wlan0: interfaceLinkStateChanged: ifindex 16 up
+11-06 13:22:11.796  1332  1512 D IpClient/wlan0: interfaceLinkStateChanged: ifindex 16 up
+11-06 13:22:12.735  1907  1907 I adbd    : adbd service requested 'shell,v2:export ANDROID_LOG_TAGS=''; exec logcat '-d''

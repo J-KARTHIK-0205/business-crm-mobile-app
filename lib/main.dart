@@ -2,8 +2,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'firebase_options.dart';
+import 'auth/auth_gate.dart';
 
 import 'screens/customers_screen.dart';
 import 'screens/leads_screen.dart';
@@ -40,14 +42,15 @@ class BusinessCRM extends StatelessWidget {
           .doc('preferences')
           .snapshots(),
       builder: (context, snapshot) {
-        String selectedTheme = 'Light';
+        final preferences =
+            snapshot.data?.data() ?? <String, dynamic>{};
 
-        if (snapshot.hasData && snapshot.data!.exists) {
-          selectedTheme =
-              snapshot.data!.data()?['theme'] ?? 'Light';
-        }
+        final dynamic savedDarkMode =
+            preferences['darkModeEnabled'];
 
-        final isDarkMode = selectedTheme == 'Dark';
+        final bool isDarkMode = savedDarkMode is bool
+            ? savedDarkMode
+            : preferences['theme'] == 'Dark';
 
         return MaterialApp(
           debugShowCheckedModeBanner: false,
@@ -82,7 +85,9 @@ class BusinessCRM extends StatelessWidget {
           themeMode:
               isDarkMode ? ThemeMode.dark : ThemeMode.light,
 
-          home: const DashboardScreen(),
+          home: AuthGate(
+            authenticatedView: const DashboardScreen(),
+          ),
         );
       },
     );
@@ -97,7 +102,8 @@ class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
+  State<DashboardScreen> createState() =>
+      _DashboardScreenState();
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
@@ -221,8 +227,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
 
-          // APP BAR
-
           appBar: AppBar(
             backgroundColor: theme.colorScheme.surface,
             foregroundColor: theme.colorScheme.onSurface,
@@ -259,8 +263,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
 
-          // MAIN BODY
-
           body: Row(
             children: [
               if (isWide)
@@ -272,7 +274,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.all(24),
+                  padding: EdgeInsets.all(isWide ? 24 : 16),
                   child: getCurrentPage(),
                 ),
               ),
@@ -291,7 +293,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 class DashboardOverview extends StatelessWidget {
   const DashboardOverview({super.key});
 
-  // STATISTICS CARD
+  // COMPACT STATISTICS CARD
 
   Widget statCard(
     BuildContext context,
@@ -300,9 +302,16 @@ class DashboardOverview extends StatelessWidget {
     IconData icon,
     Color color,
   ) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
     return Card(
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(13),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -310,21 +319,25 @@ class DashboardOverview extends StatelessWidget {
             Icon(
               icon,
               color: color,
-              size: 30,
+              size: 25,
             ),
+
             Text(
               value,
-              style: const TextStyle(
-                fontSize: 23,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
+                color: colors.onSurface,
               ),
             ),
+
             Text(
               title,
-              style: TextStyle(
-                color: Theme.of(context)
-                    .colorScheme
-                    .onSurfaceVariant,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colors.onSurfaceVariant,
               ),
             ),
           ],
@@ -341,20 +354,42 @@ class DashboardOverview extends StatelessWidget {
     String subtitle,
     IconData icon,
   ) {
+    final colors = Theme.of(context).colorScheme;
+
     return ListTile(
+      dense: true,
+      visualDensity: const VisualDensity(vertical: -2),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 2,
+      ),
       leading: CircleAvatar(
-        backgroundColor:
-            Theme.of(context).colorScheme.primaryContainer,
+        radius: 19,
+        backgroundColor: colors.primaryContainer,
         child: Icon(
           icon,
-          color: Theme.of(context).colorScheme.primary,
+          color: colors.primary,
+          size: 19,
         ),
       ),
-      title: Text(title),
-      subtitle: Text(subtitle),
-      trailing: const Icon(
-        Icons.arrow_forward_ios,
-        size: 15,
+      title: Text(
+        title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          fontWeight: FontWeight.w500,
+          fontSize: 13,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontSize: 12),
+      ),
+      trailing: Icon(
+        Icons.chevron_right,
+        color: colors.onSurfaceVariant,
       ),
     );
   }
@@ -363,22 +398,48 @@ class DashboardOverview extends StatelessWidget {
   Widget build(BuildContext context) {
     final firestore = FirebaseFirestore.instance;
     final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      return const Center(
+        child: Text('Please log in to view the dashboard.'),
+      );
+    }
+
+    // USER-SPECIFIC FIRESTORE STREAMS
+
+    final customersStream = firestore
+        .collection('customers')
+        .where('userId', isEqualTo: user.uid)
+        .snapshots();
+
+    final leadsStream = firestore
+        .collection('leads')
+        .where('userId', isEqualTo: user.uid)
+        .snapshots();
+
+    final tasksStream = firestore
+        .collection('tasks')
+        .where('userId', isEqualTo: user.uid)
+        .snapshots();
 
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: firestore.collection('customers').snapshots(),
+      stream: customersStream,
       builder: (context, customerSnapshot) {
         return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-          stream: firestore.collection('leads').snapshots(),
+          stream: leadsStream,
           builder: (context, leadSnapshot) {
             return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: firestore.collection('tasks').snapshots(),
+              stream: tasksStream,
               builder: (context, taskSnapshot) {
                 if (customerSnapshot.hasError ||
                     leadSnapshot.hasError ||
                     taskSnapshot.hasError) {
-                  return const Center(
+                  return Center(
                     child: Text(
                       'Unable to load dashboard data.',
+                      style: TextStyle(color: colors.error),
                     ),
                   );
                 }
@@ -391,7 +452,7 @@ class DashboardOverview extends StatelessWidget {
                   );
                 }
 
-                // FIRESTORE RECORDS
+                // CURRENT USER RECORDS
 
                 final customers = customerSnapshot.data!.docs;
                 final leads = leadSnapshot.data!.docs;
@@ -406,6 +467,12 @@ class DashboardOverview extends StatelessWidget {
                 final completedTasks = tasks.where((doc) {
                   return doc.data()['status'] == 'Completed';
                 }).length;
+
+                final totalTasks = tasks.length;
+
+                final completionRate = totalTasks == 0
+                    ? 0.0
+                    : completedTasks / totalTasks;
 
                 // RECENT ACTIVITIES
 
@@ -464,43 +531,46 @@ class DashboardOverview extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      // DASHBOARD HEADER
+
+                      Text(
                         'Dashboard Overview',
-                        style: TextStyle(
-                          fontSize: 27,
+                        style: theme.textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.bold,
+                          fontSize: 25,
                         ),
                       ),
 
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 5),
 
                       Text(
                         'Welcome back! Here is your business summary.',
-                        style: TextStyle(
-                          color: theme.colorScheme.onSurfaceVariant,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colors.onSurfaceVariant,
                         ),
                       ),
 
-                      const SizedBox(height: 25),
+                      const SizedBox(height: 18),
 
-                      // LIVE STATISTICS GRID
+                      // STATISTICS GRID
 
                       LayoutBuilder(
                         builder: (context, box) {
-                          final columns = box.maxWidth > 900
+                          final columns = box.maxWidth > 1000
                               ? 4
-                              : box.maxWidth > 500
+                              : box.maxWidth > 600
                                   ? 2
-                                  : 1;
+                                  : 2;
 
                           return GridView.count(
                             crossAxisCount: columns,
-                            crossAxisSpacing: 16,
-                            mainAxisSpacing: 16,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
                             shrinkWrap: true,
                             physics:
                                 const NeverScrollableScrollPhysics(),
-                            childAspectRatio: 1.8,
+                            childAspectRatio:
+                                box.maxWidth < 400 ? 1.15 : 1.55,
                             children: [
                               statCard(
                                 context,
@@ -535,49 +605,74 @@ class DashboardOverview extends StatelessWidget {
                         },
                       ),
 
-                      const SizedBox(height: 25),
+                      const SizedBox(height: 16),
 
-                      // COMPLETED TASKS SUMMARY
+                      // TASK COMPLETION SUMMARY
 
                       Card(
+                        margin: EdgeInsets.zero,
                         child: Padding(
-                          padding: const EdgeInsets.all(18),
-                          child: Row(
+                          padding: const EdgeInsets.all(15),
+                          child: Column(
                             children: [
-                              const Icon(
-                                Icons.check_circle_outline,
-                                color: Colors.green,
-                                size: 28,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Completed Tasks',
-                                      style: TextStyle(
-                                        color: theme.colorScheme
-                                            .onSurfaceVariant,
-                                      ),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.check_circle_outline,
+                                    color: Colors.green,
+                                    size: 25,
+                                  ),
+                                  const SizedBox(width: 10),
+
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Completed Tasks',
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                            color:
+                                                colors.onSurfaceVariant,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          '$completedTasks of $totalTasks',
+                                          style: theme.textTheme.titleLarge
+                                              ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      completedTasks.toString(),
-                                      style: const TextStyle(
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                  ),
+
+                                  Text(
+                                    '${(completionRate * 100).toStringAsFixed(0)}%',
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(
+                                      color: colors.primary,
+                                      fontWeight: FontWeight.bold,
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
-                              Text(
-                                '${tasks.length} Total Tasks',
-                                style: TextStyle(
-                                  color: theme.colorScheme.primary,
-                                  fontWeight: FontWeight.w600,
+
+                              const SizedBox(height: 12),
+
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: LinearProgressIndicator(
+                                  value: completionRate,
+                                  minHeight: 8,
+                                  backgroundColor:
+                                      colors.surfaceContainerHighest,
+                                  valueColor:
+                                      AlwaysStoppedAnimation<Color>(
+                                    colors.primary,
+                                  ),
                                 ),
                               ),
                             ],
@@ -585,24 +680,40 @@ class DashboardOverview extends StatelessWidget {
                         ),
                       ),
 
-                      const SizedBox(height: 30),
+                      const SizedBox(height: 20),
 
-                      // RECENT ACTIVITIES
+                      // RECENT ACTIVITIES HEADER
 
-                      const Text(
-                        'Recent Activities',
-                        style: TextStyle(
-                          fontSize: 21,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      Row(
+                        mainAxisAlignment:
+                            MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Recent Activities',
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 19,
+                            ),
+                          ),
+                          Text(
+                            '${recentActivities.length} recent',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colors.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ),
 
-                      const SizedBox(height: 15),
+                      const SizedBox(height: 10),
+
+                      // RECENT ACTIVITIES LIST
 
                       Card(
+                        margin: EdgeInsets.zero,
+                        clipBehavior: Clip.antiAlias,
                         child: activities.isEmpty
                             ? const Padding(
-                                padding: EdgeInsets.all(25),
+                                padding: EdgeInsets.all(22),
                                 child: Center(
                                   child: Text(
                                     'No recent activities found.',
@@ -625,11 +736,16 @@ class DashboardOverview extends StatelessWidget {
                                     ),
                                     if (i !=
                                         recentActivities.length - 1)
-                                      const Divider(height: 1),
+                                      const Divider(
+                                        height: 1,
+                                        indent: 60,
+                                      ),
                                   ],
                                 ],
                               ),
                       ),
+
+                      const SizedBox(height: 16),
                     ],
                   ),
                 );
