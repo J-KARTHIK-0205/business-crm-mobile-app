@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 // CUSTOMER MODEL
-
 class Customer {
   final String id;
   final String name;
@@ -11,7 +10,7 @@ class Customer {
   final String email;
   final String company;
 
-  Customer({
+  const Customer({
     required this.id,
     required this.name,
     required this.phone,
@@ -22,20 +21,19 @@ class Customer {
   factory Customer.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> document,
   ) {
-    final data = document.data() ?? {};
+    final data = document.data() ?? <String, dynamic>{};
 
     return Customer(
       id: document.id,
-      name: data['name'] ?? '',
-      phone: data['phone'] ?? '',
-      email: data['email'] ?? '',
-      company: data['company'] ?? '',
+      name: (data['name'] ?? '').toString(),
+      phone: (data['phone'] ?? '').toString(),
+      email: (data['email'] ?? '').toString(),
+      company: (data['company'] ?? '').toString(),
     );
   }
 }
 
 // CUSTOMERS SCREEN
-
 class CustomersScreen extends StatefulWidget {
   const CustomersScreen({super.key});
 
@@ -44,19 +42,14 @@ class CustomersScreen extends StatefulWidget {
 }
 
 class _CustomersScreenState extends State<CustomersScreen> {
-  final TextEditingController searchController =
-      TextEditingController();
+  final TextEditingController searchController = TextEditingController();
+
+  final CollectionReference<Map<String, dynamic>> customersCollection =
+      FirebaseFirestore.instance.collection('customers');
 
   String searchText = '';
 
-  final CollectionReference<Map<String, dynamic>>
-      customersCollection =
-      FirebaseFirestore.instance.collection('customers');
-
-  // CURRENT LOGGED-IN USER
-
-  User? get currentUser =>
-      FirebaseAuth.instance.currentUser;
+  User? get currentUser => FirebaseAuth.instance.currentUser;
 
   @override
   void dispose() {
@@ -65,116 +58,106 @@ class _CustomersScreenState extends State<CustomersScreen> {
   }
 
   // ADD / EDIT CUSTOMER
-
   void showCustomerDialog({Customer? customer}) {
     showDialog<void>(
       context: context,
-      builder: (dialogContext) {
-        return CustomerDialog(
-          customer: customer,
-          onSave: (customerData) async {
-            final user = currentUser;
+      builder: (dialogContext) => CustomerDialog(
+        customer: customer,
+        onSave: (customerData) async {
+          final user = currentUser;
 
-            if (user == null) {
-              throw Exception('Please log in to continue.');
+          if (user == null) {
+            throw Exception('Please log in to continue.');
+          }
+
+          if (customer == null) {
+            customerData['userId'] = user.uid;
+            customerData['createdAt'] = FieldValue.serverTimestamp();
+            customerData['updatedAt'] = FieldValue.serverTimestamp();
+
+            await customersCollection.add(customerData);
+          } else {
+            final customerRef = customersCollection.doc(customer.id);
+            final existing = await customerRef.get();
+
+            if (!existing.exists || existing.data()?['userId'] != user.uid) {
+              throw Exception('You cannot edit a customer you do not own.');
             }
 
-            if (customer == null) {
-              // ADD CUSTOMER WITH OWNER UID
-
-              customerData['userId'] = user.uid;
-
-              customerData['createdAt'] =
-                  FieldValue.serverTimestamp();
-
-              await customersCollection.add(customerData);
-            } else {
-              // UPDATE EXISTING CUSTOMER
-
-              await customersCollection
-                  .doc(customer.id)
-                  .update(customerData);
-            }
-          },
-        );
-      },
+            await customerRef.update({
+              ...customerData,
+              'updatedAt': FieldValue.serverTimestamp(),
+            });
+          }
+        },
+      ),
     );
   }
 
   // DELETE CUSTOMER
-
   Future<void> deleteCustomer(Customer customer) async {
+    final user = currentUser;
+
+    if (user == null) return;
+
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Delete Customer'),
-          content: const Text(
-            'Are you sure you want to delete this customer?',
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete Customer'),
+        content: const Text('Are you sure you want to delete this customer?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(dialogContext, false);
-              },
-              child: const Text('Cancel'),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
             ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () {
-                Navigator.pop(dialogContext, true);
-              },
-              child: const Text('Delete'),
-            ),
-          ],
-        );
-      },
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
     );
 
     if (confirm != true) return;
 
     try {
-      await customersCollection.doc(customer.id).delete();
+      final ref = customersCollection.doc(customer.id);
+      final doc = await ref.get();
+
+      if (!doc.exists || doc.data()?['userId'] != user.uid) {
+        throw Exception('You cannot delete a customer you do not own.');
+      }
+
+      await ref.delete();
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Customer deleted successfully'),
-        ),
+        const SnackBar(content: Text('Customer deleted successfully')),
       );
     } catch (error) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error deleting customer: $error'),
-        ),
+        SnackBar(content: Text('Error deleting customer: $error')),
       );
     }
   }
 
   // MAIN SCREEN
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-
     final user = currentUser;
 
-    // CHECK LOGIN
-
     if (user == null) {
-      return const Center(
-        child: Text('Please log in to view customers.'),
-      );
+      return const Center(child: Text('Please log in to view customers.'));
     }
-
-    // FETCH ONLY CURRENT USER'S CUSTOMERS
 
     final userCustomersStream = customersCollection
         .where('userId', isEqualTo: user.uid)
@@ -202,8 +185,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
 
         const SizedBox(height: 25),
 
-        // SEARCH AND ADD BUTTON
-
+        // SEARCH AND ADD CUSTOMER
         Row(
           children: [
             Expanded(
@@ -214,34 +196,14 @@ class _CustomersScreenState extends State<CustomersScreen> {
                     searchText = value;
                   });
                 },
-                style: TextStyle(color: colors.onSurface),
                 decoration: InputDecoration(
                   hintText: 'Search customers...',
-                  hintStyle: TextStyle(
-                    color: colors.onSurfaceVariant,
-                  ),
-                  prefixIcon: Icon(
-                    Icons.search,
-                    color: colors.onSurfaceVariant,
-                  ),
+                  prefixIcon: const Icon(Icons.search),
                   filled: true,
                   fillColor: colors.surfaceContainerHighest,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: colors.outlineVariant,
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: colors.primary,
-                      width: 1.5,
-                    ),
                   ),
                 ),
               ),
@@ -266,52 +228,33 @@ class _CustomersScreenState extends State<CustomersScreen> {
         const SizedBox(height: 20),
 
         // CUSTOMER LIST
-
         Expanded(
           child: Card(
-            child: StreamBuilder<
-                QuerySnapshot<Map<String, dynamic>>>(
+            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
               stream: userCustomersStream,
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return Center(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
-                      child: Text(
-                        'Error loading customers: ${snapshot.error}',
-                        style: TextStyle(
-                          color: colors.error,
-                        ),
-                      ),
+                      child: Text('Error loading customers: ${snapshot.error}'),
                     ),
                   );
                 }
 
-                if (snapshot.connectionState ==
-                    ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(),
-                  );
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
                 }
 
-                final customers = snapshot.data!.docs
-                    .map(
-                      (document) =>
-                          Customer.fromFirestore(document),
-                    )
-                    .where((customer) {
-                      final query = searchText.toLowerCase();
+                final query = searchText.toLowerCase().trim();
 
-                      return customer.name
-                              .toLowerCase()
-                              .contains(query) ||
+                final customers = (snapshot.data?.docs ?? [])
+                    .map(Customer.fromFirestore)
+                    .where((customer) {
+                      return customer.name.toLowerCase().contains(query) ||
                           customer.phone.contains(searchText) ||
-                          customer.email
-                              .toLowerCase()
-                              .contains(query) ||
-                          customer.company
-                              .toLowerCase()
-                              .contains(query);
+                          customer.email.toLowerCase().contains(query) ||
+                          customer.company.toLowerCase().contains(query);
                     })
                     .toList();
 
@@ -328,22 +271,20 @@ class _CustomersScreenState extends State<CustomersScreen> {
                         const SizedBox(height: 12),
                         Text(
                           'No customers found',
-                          style: TextStyle(
-                            color: colors.onSurfaceVariant,
-                          ),
+                          style: TextStyle(color: colors.onSurfaceVariant),
                         ),
                       ],
                     ),
                   );
                 }
 
+                // CORRECTED LISTVIEW.SEPARATED
                 return ListView.separated(
                   itemCount: customers.length,
 
-                  separatorBuilder: (_, index) => Divider(
-                    height: 1,
-                    color: colors.outlineVariant,
-                  ),
+                  separatorBuilder: (context, index) {
+                    return Divider(height: 1, color: colors.outlineVariant);
+                  },
 
                   itemBuilder: (context, index) {
                     final customer = customers[index];
@@ -366,54 +307,49 @@ class _CustomersScreenState extends State<CustomersScreen> {
 
                       title: Text(
                         customer.name,
-                        style: TextStyle(
-                          color: colors.onSurface,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
 
-                      subtitle: Text(
-                        '${customer.company}\n'
-                        '${customer.phone}\n'
-                        '${customer.email}',
-                        style: TextStyle(
-                          color: colors.onSurfaceVariant,
+                      subtitle: Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (customer.company.isNotEmpty)
+                              Text('Company: ${customer.company}'),
+                            if (customer.phone.isNotEmpty)
+                              Text('Phone: ${customer.phone}'),
+                            if (customer.email.isNotEmpty)
+                              Text('Email: ${customer.email}'),
+                          ],
                         ),
                       ),
-
-                      isThreeLine: true,
 
                       trailing: PopupMenuButton<String>(
-                        iconColor: colors.onSurfaceVariant,
                         onSelected: (value) {
                           if (value == 'edit') {
-                            showCustomerDialog(
-                              customer: customer,
-                            );
+                            showCustomerDialog(customer: customer);
                           } else if (value == 'delete') {
                             deleteCustomer(customer);
                           }
                         },
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(
+                        itemBuilder: (context) => const [
+                          PopupMenuItem(
                             value: 'edit',
                             child: Row(
                               children: [
                                 Icon(Icons.edit_outlined),
-                                SizedBox(width: 10),
+                                SizedBox(width: 8),
                                 Text('Edit'),
                               ],
                             ),
                           ),
-                          const PopupMenuItem(
+                          PopupMenuItem(
                             value: 'delete',
                             child: Row(
                               children: [
-                                Icon(
-                                  Icons.delete_outline,
-                                  color: Colors.red,
-                                ),
-                                SizedBox(width: 10),
+                                Icon(Icons.delete_outline, color: Colors.red),
+                                SizedBox(width: 8),
                                 Text('Delete'),
                               ],
                             ),
@@ -432,24 +368,15 @@ class _CustomersScreenState extends State<CustomersScreen> {
   }
 }
 
-// CUSTOMER ADD / EDIT DIALOG
-
+// ADD / EDIT CUSTOMER DIALOG
 class CustomerDialog extends StatefulWidget {
   final Customer? customer;
+  final Future<void> Function(Map<String, dynamic>) onSave;
 
-  final Future<void> Function(
-    Map<String, dynamic> customerData,
-  ) onSave;
-
-  const CustomerDialog({
-    super.key,
-    this.customer,
-    required this.onSave,
-  });
+  const CustomerDialog({super.key, this.customer, required this.onSave});
 
   @override
-  State<CustomerDialog> createState() =>
-      _CustomerDialogState();
+  State<CustomerDialog> createState() => _CustomerDialogState();
 }
 
 class _CustomerDialogState extends State<CustomerDialog> {
@@ -464,24 +391,16 @@ class _CustomerDialogState extends State<CustomerDialog> {
   void initState() {
     super.initState();
 
-    nameController = TextEditingController(
-      text: widget.customer?.name ?? '',
-    );
+    nameController = TextEditingController(text: widget.customer?.name ?? '');
 
-    phoneController = TextEditingController(
-      text: widget.customer?.phone ?? '',
-    );
+    phoneController = TextEditingController(text: widget.customer?.phone ?? '');
 
-    emailController = TextEditingController(
-      text: widget.customer?.email ?? '',
-    );
+    emailController = TextEditingController(text: widget.customer?.email ?? '');
 
     companyController = TextEditingController(
       text: widget.customer?.company ?? '',
     );
   }
-
-  // SAFE CONTROLLER DISPOSAL
 
   @override
   void dispose() {
@@ -489,23 +408,15 @@ class _CustomerDialogState extends State<CustomerDialog> {
     phoneController.dispose();
     emailController.dispose();
     companyController.dispose();
-
     super.dispose();
   }
 
   // SAVE CUSTOMER
-
   Future<void> saveCustomer() async {
-    if (nameController.text.trim().isEmpty ||
-        phoneController.text.trim().isEmpty) {
+    if (nameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Name and phone number are required',
-          ),
-        ),
+        const SnackBar(content: Text('Customer name is required.')),
       );
-
       return;
     }
 
@@ -513,31 +424,24 @@ class _CustomerDialogState extends State<CustomerDialog> {
       isSaving = true;
     });
 
-    final customerData = <String, dynamic>{
-      'name': nameController.text.trim(),
-      'phone': phoneController.text.trim(),
-      'email': emailController.text.trim(),
-      'company': companyController.text.trim(),
-    };
-
     try {
-      await widget.onSave(customerData);
+      await widget.onSave({
+        'name': nameController.text.trim(),
+        'phone': phoneController.text.trim(),
+        'email': emailController.text.trim(),
+        'company': companyController.text.trim(),
+      });
 
       if (!mounted) return;
 
-      final messenger = ScaffoldMessenger.of(context);
+      final message = widget.customer == null
+          ? 'Customer added successfully'
+          : 'Customer updated successfully';
 
-      Navigator.of(context).pop();
+      Navigator.pop(context);
 
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            widget.customer == null
-                ? 'Customer added successfully'
-                : 'Customer updated successfully',
-          ),
-        ),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
     } catch (error) {
       if (!mounted) return;
 
@@ -546,106 +450,89 @@ class _CustomerDialogState extends State<CustomerDialog> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error saving customer: $error'),
-        ),
+        SnackBar(content: Text('Unable to save customer: $error')),
       );
     }
   }
 
-  // THEME-AWARE DIALOG
-
+  // CUSTOMER FORM
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
+    final isEditing = widget.customer != null;
 
     return AlertDialog(
-      backgroundColor: colors.surface,
-
-      title: Text(
-        widget.customer == null
-            ? 'Add Customer'
-            : 'Edit Customer',
-        style: TextStyle(
-          color: colors.onSurface,
-        ),
-      ),
+      title: Text(isEditing ? 'Edit Customer' : 'Add Customer'),
 
       content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              style: TextStyle(color: colors.onSurface),
-              decoration: const InputDecoration(
-                labelText: 'Customer Name',
-                prefixIcon: Icon(Icons.person),
+        child: SizedBox(
+          width: 400,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Customer Name *',
+                  prefixIcon: Icon(Icons.person_outline),
+                  border: OutlineInputBorder(),
+                ),
               ),
-            ),
 
-            const SizedBox(height: 12),
+              const SizedBox(height: 12),
 
-            TextField(
-              controller: phoneController,
-              keyboardType: TextInputType.phone,
-              style: TextStyle(color: colors.onSurface),
-              decoration: const InputDecoration(
-                labelText: 'Phone Number',
-                prefixIcon: Icon(Icons.phone),
+              TextField(
+                controller: phoneController,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(
+                  labelText: 'Phone Number',
+                  prefixIcon: Icon(Icons.phone_outlined),
+                  border: OutlineInputBorder(),
+                ),
               ),
-            ),
 
-            const SizedBox(height: 12),
+              const SizedBox(height: 12),
 
-            TextField(
-              controller: emailController,
-              keyboardType: TextInputType.emailAddress,
-              style: TextStyle(color: colors.onSurface),
-              decoration: const InputDecoration(
-                labelText: 'Email Address',
-                prefixIcon: Icon(Icons.email),
+              TextField(
+                controller: emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'Email Address',
+                  prefixIcon: Icon(Icons.email_outlined),
+                  border: OutlineInputBorder(),
+                ),
               ),
-            ),
 
-            const SizedBox(height: 12),
+              const SizedBox(height: 12),
 
-            TextField(
-              controller: companyController,
-              style: TextStyle(color: colors.onSurface),
-              decoration: const InputDecoration(
-                labelText: 'Company',
-                prefixIcon: Icon(Icons.business),
+              TextField(
+                controller: companyController,
+                decoration: const InputDecoration(
+                  labelText: 'Company',
+                  prefixIcon: Icon(Icons.business_outlined),
+                  border: OutlineInputBorder(),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
 
       actions: [
         TextButton(
-          onPressed: isSaving
-              ? null
-              : () => Navigator.of(context).pop(),
+          onPressed: isSaving ? null : () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
 
-        ElevatedButton(
+        ElevatedButton.icon(
           onPressed: isSaving ? null : saveCustomer,
-          child: isSaving
+          icon: isSaving
               ? const SizedBox(
-                  height: 18,
-                  width: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                  ),
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : Text(
-                  widget.customer == null
-                      ? 'Add'
-                      : 'Update',
-                ),
+              : const Icon(Icons.save_outlined),
+          label: Text(isSaving ? 'Saving...' : 'Save'),
         ),
       ],
     );

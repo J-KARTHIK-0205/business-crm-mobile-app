@@ -31,7 +31,7 @@ class AuthService {
       await user.updateDisplayName(name.trim());
       await user.reload();
 
-      final updatedUser = _auth.currentUser;
+  await FirebaseAuth.instance.currentUser?.reload();
 
       await _firestore.collection('users').doc(user.uid).set({
         'uid': user.uid,
