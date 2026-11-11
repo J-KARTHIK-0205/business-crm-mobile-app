@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -12,7 +13,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final FirebaseFirestore firestore = FirebaseFirestore.instance;
+  final firestore = FirebaseFirestore.instance;
 
   final nameController = TextEditingController();
   final emailController = TextEditingController();
@@ -30,13 +31,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   User? get currentUser => FirebaseAuth.instance.currentUser;
 
+  static const green = Color(0xFF00C853);
+  static const muted = Color(0xFF9AA69D);
+  static const card = Color(0xFF121A15);
+
   DocumentReference<Map<String, dynamic>> get userProfileRef {
     final user = currentUser;
-
     if (user == null) {
       throw Exception('No logged-in user found.');
     }
-
     return firestore.collection('users').doc(user.uid);
   }
 
@@ -62,14 +65,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.dispose();
   }
 
-  // --------------------------------------------------
-  // LOAD SETTINGS
-  // --------------------------------------------------
-
   Future<void> loadSettings() async {
     try {
       final user = currentUser;
-
       if (user == null) {
         throw Exception('Please log in again.');
       }
@@ -80,9 +78,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         preferencesRef.get(),
       ]);
 
-      final profile = results[0].data() ?? {};
-      final business = results[1].data() ?? {};
-      final preferences = results[2].data() ?? {};
+      final profile = results[0].data() ?? <String, dynamic>{};
+      final business = results[1].data() ?? <String, dynamic>{};
+      final preferences = results[2].data() ?? <String, dynamic>{};
 
       await user.reload();
       final refreshedUser = FirebaseAuth.instance.currentUser;
@@ -91,28 +89,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       setState(() {
         nameController.text =
-            refreshedUser?.displayName ??
-            profile['name'] ??
-            '';
+            refreshedUser?.displayName ?? profile['name']?.toString() ?? '';
 
         emailController.text =
-            refreshedUser?.email ??
-            profile['email'] ??
-            '';
+            refreshedUser?.email ?? profile['email']?.toString() ?? '';
 
-        phoneController.text = profile['phone'] ?? '';
+        phoneController.text = profile['phone']?.toString() ?? '';
 
         businessNameController.text =
-            business['businessName'] ?? '';
+            business['businessName']?.toString() ?? '';
 
         businessAddressController.text =
-            business['businessAddress'] ?? '';
+            business['businessAddress']?.toString() ?? '';
 
         notificationsEnabled =
-            preferences['notificationsEnabled'] ?? true;
+            preferences['notificationsEnabled'] is bool
+                ? preferences['notificationsEnabled'] as bool
+                : true;
 
         emailNotifications =
-            preferences['emailNotifications'] ?? true;
+            preferences['emailNotifications'] is bool
+                ? preferences['emailNotifications'] as bool
+                : true;
 
         final savedDarkMode = preferences['darkModeEnabled'];
 
@@ -122,42 +120,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
         isLoading = false;
       });
-    } catch (e) {
+    } catch (error) {
       if (!mounted) return;
 
-      setState(() {
-        isLoading = false;
-      });
+      setState(() => isLoading = false);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error loading settings: $e'),
-        ),
+        SnackBar(content: Text('Error loading settings: $error')),
       );
     }
   }
-
-  // --------------------------------------------------
-  // SAVE SETTINGS
-  // --------------------------------------------------
 
   Future<void> saveSettings() async {
     if (isSaving) return;
 
     final user = currentUser;
-
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please log in again.'),
-        ),
+        const SnackBar(content: Text('Please log in again.')),
       );
       return;
     }
 
-    setState(() {
-      isSaving = true;
-    });
+    setState(() => isSaving = true);
 
     try {
       final updatedName = nameController.text.trim();
@@ -165,7 +150,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (updatedName.isNotEmpty &&
           updatedName != (user.displayName ?? '')) {
         await user.updateDisplayName(updatedName);
-        await user.reload();
       }
 
       await Future.wait([
@@ -194,321 +178,345 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Settings saved successfully!'),
-        ),
+        const SnackBar(content: Text('Settings saved successfully.')),
       );
-    } catch (e) {
+    } catch (error) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error saving settings: $e'),
-        ),
+        SnackBar(content: Text('Error saving settings: $error')),
       );
     } finally {
-      if (mounted) {
-        setState(() {
-          isSaving = false;
-        });
-      }
+      if (mounted) setState(() => isSaving = false);
     }
   }
-
-  // --------------------------------------------------
-  // LOGOUT
-  // --------------------------------------------------
-
-  Future<void> logout() async {
-    if (loggingOut) return;
-
-    setState(() {
-      loggingOut = true;
-    });
-
-    try {
-      await AuthService().logout();
-    } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Logout failed: $e'),
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          loggingOut = false;
-        });
-      }
-    }
-  }
-
-  Future<void> confirmLogout() async {
-    final shouldLogout = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Logout'),
-          content: const Text(
-            'Are you sure you want to logout?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(dialogContext, false);
-              },
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(dialogContext, true);
-              },
-              child: const Text('Logout'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (shouldLogout == true && mounted) {
-      await logout();
-    }
-  }
-
-  // --------------------------------------------------
-  // REUSABLE WIDGETS
-  // --------------------------------------------------
-
-  Widget sectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(
-        top: 24,
-        bottom: 12,
-      ),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-
-  Widget inputField({
-    required String label,
-    required TextEditingController controller,
-    TextInputType keyboardType = TextInputType.text,
-    bool readOnly = false,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: TextField(
-        controller: controller,
-        keyboardType: keyboardType,
-        readOnly: readOnly,
-        decoration: InputDecoration(
-          labelText: label,
-          border: const OutlineInputBorder(),
-          suffixIcon: readOnly
-              ? const Icon(Icons.lock_outline)
-              : null,
-        ),
-      ),
-    );
-  }
-
-  Widget settingSwitch({
-    required String title,
-    required String subtitle,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
-    return SwitchListTile(
-      title: Text(title),
-      subtitle: Text(subtitle),
-      value: value,
-      onChanged: onChanged,
-      contentPadding: EdgeInsets.zero,
-    );
-  }
-
-  // --------------------------------------------------
-  // DARK MODE UPDATE
-  // --------------------------------------------------
 
   Future<void> updateDarkMode(bool value) async {
-    final previousValue = darkModeEnabled;
+    final previous = darkModeEnabled;
 
-    setState(() {
-      darkModeEnabled = value;
-    });
+    setState(() => darkModeEnabled = value);
 
     try {
       await preferencesRef.set({
         'darkModeEnabled': value,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
-    } catch (e) {
+    } catch (error) {
       if (!mounted) return;
 
-      setState(() {
-        darkModeEnabled = previousValue;
-      });
+      setState(() => darkModeEnabled = previous);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Unable to update theme: $e'),
-        ),
+        SnackBar(content: Text('Unable to update theme: $error')),
       );
     }
   }
 
-  // --------------------------------------------------
-  // SETTINGS SCREEN UI
-  // --------------------------------------------------
+  Future<void> logout() async {
+    if (loggingOut) return;
+
+    setState(() => loggingOut = true);
+
+    try {
+      await AuthService().logout();
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Logout failed: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => loggingOut = false);
+    }
+  }
+
+  Future<void> confirmLogout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: card,
+        title: const Text('Logout?'),
+        content: const Text('Are you sure you want to sign out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await logout();
+    }
+  }
+
+  Widget _sectionTitle(String title, String subtitle) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 23, bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: const TextStyle(color: muted, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _input({
+    required String label,
+    required TextEditingController controller,
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
+    bool readOnly = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 13),
+      child: TextField(
+        controller: controller,
+        keyboardType: keyboardType,
+        readOnly: readOnly,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: const TextStyle(color: muted),
+          prefixIcon: Icon(icon, color: green),
+          suffixIcon: readOnly
+              ? const Icon(Icons.lock_outline, color: muted)
+              : null,
+          filled: true,
+          fillColor: const Color(0xFF1A241D),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(13),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(13),
+            borderSide: BorderSide(
+              color: Colors.white.withValues(alpha: 0.06),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _switchCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: card,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.06),
+        ),
+      ),
+      child: SwitchListTile(
+        value: value,
+        onChanged: onChanged,
+        activeThumbColor: green,
+        secondary: Icon(icon, color: green),
+        title: Text(
+          title,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: const TextStyle(color: muted, fontSize: 12),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
       return const Center(
-        child: CircularProgressIndicator(),
+        child: CircularProgressIndicator(color: green),
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-      ),
-
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 28),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // PROFILE INFORMATION
-
-          sectionTitle('Profile Information'),
-
-          inputField(
-            label: 'Full Name',
-            controller: nameController,
+          const Text(
+            'Settings',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 25,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Manage your profile, workspace and preferences.',
+            style: TextStyle(color: muted, fontSize: 13),
           ),
 
-          inputField(
+          _sectionTitle(
+            'Profile Information',
+            'Your personal account details',
+          ),
+          _input(
+            label: 'Full Name',
+            controller: nameController,
+            icon: Icons.person_outline,
+          ),
+          _input(
             label: 'Email Address',
             controller: emailController,
+            icon: Icons.email_outlined,
             keyboardType: TextInputType.emailAddress,
             readOnly: true,
           ),
-
-          inputField(
+          _input(
             label: 'Phone Number',
             controller: phoneController,
+            icon: Icons.phone_outlined,
             keyboardType: TextInputType.phone,
           ),
 
-          // BUSINESS INFORMATION
-
-          sectionTitle('Business Information'),
-
-          inputField(
+          _sectionTitle(
+            'Business Information',
+            'Details about your workspace',
+          ),
+          _input(
             label: 'Business Name',
             controller: businessNameController,
+            icon: Icons.business_outlined,
           ),
-
-          inputField(
+          _input(
             label: 'Business Address',
             controller: businessAddressController,
+            icon: Icons.location_on_outlined,
           ),
 
-          // PREFERENCES
-
-          sectionTitle('Preferences'),
-
-          settingSwitch(
+          _sectionTitle(
+            'Preferences',
+            'Customize your CRM experience',
+          ),
+          _switchCard(
             title: 'Push Notifications',
             subtitle: 'Receive app notifications',
+            icon: Icons.notifications_active_outlined,
             value: notificationsEnabled,
             onChanged: (value) {
-              setState(() {
-                notificationsEnabled = value;
-              });
+              setState(() => notificationsEnabled = value);
             },
           ),
-
-          settingSwitch(
+          _switchCard(
             title: 'Email Notifications',
             subtitle: 'Receive updates through email',
+            icon: Icons.mark_email_unread_outlined,
             value: emailNotifications,
             onChanged: (value) {
-              setState(() {
-                emailNotifications = value;
-              });
+              setState(() => emailNotifications = value);
             },
           ),
-
-          settingSwitch(
+          _switchCard(
             title: 'Dark Mode',
-            subtitle: 'Enable dark theme',
+            subtitle: 'Use the dark CRM appearance',
+            icon: Icons.dark_mode_outlined,
             value: darkModeEnabled,
             onChanged: updateDarkMode,
           ),
 
-          const SizedBox(height: 24),
-
-          // SAVE BUTTON
-
+          const SizedBox(height: 20),
           SizedBox(
-            height: 50,
-            child: ElevatedButton.icon(
+            width: double.infinity,
+            child: FilledButton.icon(
               onPressed: isSaving ? null : saveSettings,
               icon: isSaving
                   ? const SizedBox(
-                      height: 18,
                       width: 18,
+                      height: 18,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
+                        color: Colors.black,
                       ),
                     )
-                  : const Icon(Icons.save),
-              label: Text(
-                isSaving ? 'Saving...' : 'Save Settings',
+                  : const Icon(Icons.save_outlined),
+              label: Text(isSaving ? 'Saving...' : 'Save Settings'),
+              style: FilledButton.styleFrom(
+                backgroundColor: green,
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(vertical: 15),
               ),
             ),
           ),
 
-          // ACCOUNT SETTINGS
-
-          sectionTitle('Account Settings'),
-
-          Card(
-            child: ListTile(
-              leading: const Icon(
-                Icons.logout,
-                color: Colors.red,
+          _sectionTitle(
+            'Account',
+            'Manage your current session',
+          ),
+          Container(
+            decoration: BoxDecoration(
+              color: card,
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.06),
               ),
-              title: const Text('Logout'),
+            ),
+            child: ListTile(
+              leading: const Icon(Icons.logout, color: Colors.redAccent),
+              title: const Text(
+                'Logout',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               subtitle: const Text(
                 'Sign out from your account',
+                style: TextStyle(color: muted, fontSize: 12),
               ),
               trailing: loggingOut
                   ? const SizedBox(
-                      height: 20,
                       width: 20,
+                      height: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
+                        color: green,
                       ),
                     )
                   : const Icon(
                       Icons.arrow_forward_ios,
+                      color: muted,
+                      size: 16,
                     ),
               onTap: loggingOut ? null : confirmLogout,
             ),
           ),
-
-          const SizedBox(height: 30),
         ],
       ),
     );
