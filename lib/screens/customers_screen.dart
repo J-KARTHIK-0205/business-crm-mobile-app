@@ -1,7 +1,11 @@
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:http/http.dart' as http;
 
 // =====================================================
 // CUSTOMER MODEL
@@ -22,6 +26,18 @@ class Customer {
     required this.company,
   });
 
+  // MySQL / PHP API response
+  factory Customer.fromJson(Map<String, dynamic> json) {
+    return Customer(
+      id: (json['id'] ?? '').toString(),
+      name: (json['customer_name'] ?? json['name'] ?? '').toString(),
+      phone: (json['phone'] ?? '').toString(),
+      email: (json['email'] ?? '').toString(),
+      company: (json['company'] ?? '').toString(),
+    );
+  }
+
+  // Compatibility with the existing Firestore Leads screen
   factory Customer.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> document,
   ) {
@@ -29,7 +45,7 @@ class Customer {
 
     return Customer(
       id: document.id,
-      name: (data['name'] ?? '').toString(),
+      name: (data['name'] ?? data['customer_name'] ?? '').toString(),
       phone: (data['phone'] ?? '').toString(),
       email: (data['email'] ?? '').toString(),
       company: (data['company'] ?? '').toString(),
@@ -49,19 +65,36 @@ class CustomersScreen extends StatefulWidget {
 }
 
 class _CustomersScreenState extends State<CustomersScreen> {
-  final CollectionReference<Map<String, dynamic>> customersCollection =
-      FirebaseFirestore.instance.collection('customers');
-
   final TextEditingController searchController = TextEditingController();
 
+  static const Color backgroundColor = Color(0xFF080C09);
+  static const Color cardColor = Color(0xFF121A15);
+  static const Color emerald = Color(0xFF00C853);
+  static const Color emeraldLight = Color(0xFF69F0AE);
+  static const Color mutedColor = Color(0xFF9AA69D);
+
   String searchText = '';
+  List<Customer> customers = [];
+
+  bool isLoading = true;
+  String? loadError;
 
   User? get currentUser => FirebaseAuth.instance.currentUser;
 
-  static const Color emerald = Color(0xFF00C853);
-  static const Color emeraldLight = Color(0xFF69F0AE);
-  static const Color cardColor = Color(0xFF121A15);
-  static const Color mutedColor = Color(0xFF9AA69D);
+  // API URL
+  String get apiUrl {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      return 'http://10.0.2.2/business_crm_api/api/customers/index.php';
+    }
+
+    return 'http://localhost/business_crm_api/api/customers/index.php';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    loadCustomers();
+  }
 
   @override
   void dispose() {
@@ -70,7 +103,179 @@ class _CustomersScreenState extends State<CustomersScreen> {
   }
 
   // =====================================================
-  // ADD / EDIT CUSTOMER
+  // API HEADERS
+  // =====================================================
+
+  Future<Map<String, String>> getHeaders() async {
+    final user = currentUser;
+
+    if (user == null) {
+      throw Exception('Please log in to continue.');
+    }
+
+    final token = await user.getIdToken(true);
+
+    if (token == null || token.isEmpty) {
+      throw Exception('Unable to get Firebase authentication token.');
+    }
+
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+  }
+
+  // =====================================================
+  // API RESPONSE HANDLING
+  // =====================================================
+
+  Map<String, dynamic> decodeResponse(http.Response response) {
+    final dynamic decoded;
+
+    try {
+      decoded = jsonDecode(response.body);
+    } catch (_) {
+      throw Exception('Invalid response received from the server.');
+    }
+
+    if (decoded is! Map<String, dynamic>) {
+      throw Exception('Unexpected server response.');
+    }
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(
+        decoded['message']?.toString() ??
+            'Server error: ${response.statusCode}',
+      );
+    }
+
+    if (decoded['success'] != true) {
+      throw Exception(
+        decoded['message']?.toString() ?? 'Request failed.',
+      );
+    }
+
+    return decoded;
+  }
+
+  // =====================================================
+  // LOAD CUSTOMERS FROM MYSQL
+  // =====================================================
+
+  Future<void> loadCustomers() async {
+    if (currentUser == null) {
+      if (!mounted) return;
+
+      setState(() {
+        isLoading = false;
+        loadError = 'Please log in to view customers.';
+      });
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        isLoading = true;
+        loadError = null;
+      });
+    }
+
+    try {
+      final headers = await getHeaders();
+
+      final response = await http
+          .get(Uri.parse(apiUrl), headers: headers)
+          .timeout(const Duration(seconds: 20));
+
+      final result = decodeResponse(response);
+      final dynamic data = result['data'];
+
+      if (data is! List) {
+        throw Exception('Customer list was not returned by the server.');
+      }
+
+      final loadedCustomers = data
+          .whereType<Map>()
+          .map(
+            (item) => Customer.fromJson(
+              Map<String, dynamic>.from(item),
+            ),
+          )
+          .toList();
+
+      if (!mounted) return;
+
+      setState(() {
+        customers = loadedCustomers;
+        isLoading = false;
+        loadError = null;
+      });
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() {
+        isLoading = false;
+        loadError = error.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
+  // =====================================================
+  // ADD CUSTOMER
+  // =====================================================
+
+  Future<void> addCustomer(Map<String, dynamic> customerData) async {
+    final headers = await getHeaders();
+
+    final response = await http
+        .post(
+          Uri.parse(apiUrl),
+          headers: headers,
+          body: jsonEncode(customerData),
+        )
+        .timeout(const Duration(seconds: 20));
+
+    decodeResponse(response);
+
+    await loadCustomers();
+
+    if (loadError != null) {
+      throw Exception('Customer saved, but refreshing the list failed: $loadError');
+    }
+  }
+
+  // =====================================================
+  // UPDATE CUSTOMER
+  // =====================================================
+
+  Future<void> updateCustomer(
+    Customer customer,
+    Map<String, dynamic> customerData,
+  ) async {
+    final headers = await getHeaders();
+
+    final response = await http
+        .put(
+          Uri.parse(apiUrl),
+          headers: headers,
+          body: jsonEncode({
+            'id': customer.id,
+            ...customerData,
+          }),
+        )
+        .timeout(const Duration(seconds: 20));
+
+    decodeResponse(response);
+
+    await loadCustomers();
+
+    if (loadError != null) {
+      throw Exception('Customer updated, but refreshing the list failed: $loadError');
+    }
+  }
+
+  // =====================================================
+  // ADD / EDIT CUSTOMER DIALOG
   // =====================================================
 
   Future<void> showCustomerDialog({Customer? customer}) async {
@@ -80,37 +285,10 @@ class _CustomersScreenState extends State<CustomersScreen> {
         return CustomerDialog(
           customer: customer,
           onSave: (customerData) async {
-            final user = currentUser;
-
-            if (user == null) {
-              throw Exception('Please log in to continue.');
-            }
-
             if (customer == null) {
-              customerData['userId'] = user.uid;
-              customerData['createdAt'] =
-                  FieldValue.serverTimestamp();
-              customerData['updatedAt'] =
-                  FieldValue.serverTimestamp();
-
-              await customersCollection.add(customerData);
+              await addCustomer(customerData);
             } else {
-              final customerRef =
-                  customersCollection.doc(customer.id);
-
-              final existing = await customerRef.get();
-
-              if (!existing.exists ||
-                  existing.data()?['userId'] != user.uid) {
-                throw Exception(
-                  'You cannot edit a customer you do not own.',
-                );
-              }
-
-              await customerRef.update({
-                ...customerData,
-                'updatedAt': FieldValue.serverTimestamp(),
-              });
+              await updateCustomer(customer, customerData);
             }
           },
         );
@@ -135,51 +313,52 @@ class _CustomersScreenState extends State<CustomersScreen> {
   // =====================================================
 
   Future<void> deleteCustomer(Customer customer) async {
-    final user = currentUser;
-
-    if (user == null) return;
-
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete Customer?'),
-        content: Text(
-          'Are you sure you want to delete ${customer.name}?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () =>
-                Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: cardColor,
+          title: const Text(
+            'Delete Customer?',
+            style: TextStyle(color: Colors.white),
           ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Colors.red,
+          content: Text(
+            'Are you sure you want to delete ${customer.name}?',
+            style: const TextStyle(color: mutedColor),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
             ),
-            onPressed: () =>
-                Navigator.pop(dialogContext, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.red,
+              ),
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
     );
 
     if (confirm != true) return;
 
     try {
-      final reference =
-          customersCollection.doc(customer.id);
+      final headers = await getHeaders();
 
-      final document = await reference.get();
+      final uri = Uri.parse(apiUrl).replace(
+        queryParameters: {'id': customer.id},
+      );
 
-      if (!document.exists ||
-          document.data()?['userId'] != user.uid) {
-        throw Exception(
-          'You cannot delete a customer you do not own.',
-        );
-      }
+      final response = await http
+          .delete(uri, headers: headers)
+          .timeout(const Duration(seconds: 20));
 
-      await reference.delete();
+      decodeResponse(response);
+
+      await loadCustomers();
 
       if (!mounted) return;
 
@@ -192,7 +371,9 @@ class _CustomersScreenState extends State<CustomersScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Delete failed: $error')),
+        SnackBar(
+          content: Text('Delete failed: $error'),
+        ),
       );
     }
   }
@@ -255,6 +436,30 @@ class _CustomersScreenState extends State<CustomersScreen> {
   }
 
   // =====================================================
+  // CUSTOMER INFORMATION ROW
+  // =====================================================
+
+  Widget infoRow(IconData icon, String value) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: mutedColor),
+        const SizedBox(width: 7),
+        Expanded(
+          child: Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: mutedColor,
+              fontSize: 12,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // =====================================================
   // CUSTOMER CARD
   // =====================================================
 
@@ -312,33 +517,21 @@ class _CustomersScreenState extends State<CustomersScreen> {
                   ),
                   if (customer.company.isNotEmpty) ...[
                     const SizedBox(height: 5),
-                    _infoRow(
-                      Icons.business_outlined,
-                      customer.company,
-                    ),
+                    infoRow(Icons.business_outlined, customer.company),
                   ],
                   if (customer.phone.isNotEmpty) ...[
                     const SizedBox(height: 5),
-                    _infoRow(
-                      Icons.phone_outlined,
-                      customer.phone,
-                    ),
+                    infoRow(Icons.phone_outlined, customer.phone),
                   ],
                   if (customer.email.isNotEmpty) ...[
                     const SizedBox(height: 5),
-                    _infoRow(
-                      Icons.email_outlined,
-                      customer.email,
-                    ),
+                    infoRow(Icons.email_outlined, customer.email),
                   ],
                 ],
               ),
             ),
             PopupMenuButton<String>(
-              icon: const Icon(
-                Icons.more_vert,
-                color: mutedColor,
-              ),
+              icon: const Icon(Icons.more_vert, color: mutedColor),
               color: cardColor,
               onSelected: (value) {
                 if (value == 'edit') {
@@ -377,26 +570,6 @@ class _CustomersScreenState extends State<CustomersScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _infoRow(IconData icon, String value) {
-    return Row(
-      children: [
-        Icon(icon, size: 14, color: mutedColor),
-        const SizedBox(width: 7),
-        Expanded(
-          child: Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: mutedColor,
-              fontSize: 12,
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -455,233 +628,199 @@ class _CustomersScreenState extends State<CustomersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = currentUser;
+    final query = searchText.toLowerCase().trim();
 
-    if (user == null) {
-      return const Center(
-        child: Text('Please log in to view customers.'),
-      );
-    }
+    final filteredCustomers = customers.where((customer) {
+      return customer.name.toLowerCase().contains(query) ||
+          customer.phone.toLowerCase().contains(query) ||
+          customer.email.toLowerCase().contains(query) ||
+          customer.company.toLowerCase().contains(query);
+    }).toList();
 
-    final customerStream = customersCollection
-        .where('userId', isEqualTo: user.uid)
-        .snapshots();
+    return RefreshIndicator(
+      color: emerald,
+      onRefresh: loadCustomers,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isNarrow = constraints.maxWidth < 430;
 
-    return StreamBuilder<
-        QuerySnapshot<Map<String, dynamic>>>(
-      stream: customerStream,
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return Center(
-            child: Text(
-              'Unable to load customers: ${snapshot.error}',
-              style: const TextStyle(color: Colors.red),
-            ),
-          );
-        }
-
-        if (snapshot.connectionState ==
-                ConnectionState.waiting &&
-            !snapshot.hasData) {
-          return const Center(
-            child: CircularProgressIndicator(
-              color: emerald,
-            ),
-          );
-        }
-
-        final documents = snapshot.data?.docs ?? [];
-
-        final allCustomers =
-            documents.map(Customer.fromFirestore).toList();
-
-        final query = searchText.toLowerCase().trim();
-
-        final filteredCustomers = allCustomers.where((customer) {
-          return customer.name.toLowerCase().contains(query) ||
-              customer.phone.contains(searchText.trim()) ||
-              customer.email.toLowerCase().contains(query) ||
-              customer.company.toLowerCase().contains(query);
-        }).toList();
-
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final isNarrow = constraints.maxWidth < 430;
-
-            return SingleChildScrollView(
-              padding: const EdgeInsets.only(bottom: 25),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // PAGE HEADING
-                  const Text(
-                    'Customers',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 25,
-                      fontWeight: FontWeight.bold,
-                    ),
+          return SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.only(bottom: 25),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Customers',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 25,
+                    fontWeight: FontWeight.bold,
                   ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Manage your business relationships in one place.',
-                    style: TextStyle(
-                      color: mutedColor,
-                      fontSize: 13,
-                    ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Manage your business relationships in one place.',
+                  style: TextStyle(
+                    color: mutedColor,
+                    fontSize: 13,
                   ),
+                ),
+                const SizedBox(height: 20),
 
-                  const SizedBox(height: 20),
-
-                  // SUMMARY
-                  if (isNarrow)
-                    Column(
-                      children: [
-                        summaryCard(
+                if (isNarrow)
+                  Column(
+                    children: [
+                      summaryCard(
+                        title: 'Total Customers',
+                        value: '${customers.length}',
+                        icon: Icons.people_outline,
+                      ),
+                      const SizedBox(height: 10),
+                      summaryCard(
+                        title: 'Search Results',
+                        value: '${filteredCustomers.length}',
+                        icon: Icons.manage_search,
+                      ),
+                    ],
+                  )
+                else
+                  Row(
+                    children: [
+                      Expanded(
+                        child: summaryCard(
                           title: 'Total Customers',
-                          value: '${allCustomers.length}',
+                          value: '${customers.length}',
                           icon: Icons.people_outline,
                         ),
-                        const SizedBox(height: 10),
-                        summaryCard(
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: summaryCard(
                           title: 'Search Results',
                           value: '${filteredCustomers.length}',
                           icon: Icons.manage_search,
-                        ),
-                      ],
-                    )
-                  else
-                    Row(
-                      children: [
-                        Expanded(
-                          child: summaryCard(
-                            title: 'Total Customers',
-                            value: '${allCustomers.length}',
-                            icon: Icons.people_outline,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: summaryCard(
-                            title: 'Search Results',
-                            value: '${filteredCustomers.length}',
-                            icon: Icons.manage_search,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                  const SizedBox(height: 22),
-
-                  // SEARCH
-                  TextField(
-                    controller: searchController,
-                    onChanged: (value) {
-                      setState(() {
-                        searchText = value;
-                      });
-                    },
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText: 'Search customers...',
-                      hintStyle: const TextStyle(
-                        color: mutedColor,
-                        fontSize: 13,
-                      ),
-                      prefixIcon: const Icon(
-                        Icons.search,
-                        color: emeraldLight,
-                      ),
-                      suffixIcon: searchText.isNotEmpty
-                          ? IconButton(
-                              onPressed: () {
-                                searchController.clear();
-                                setState(() {
-                                  searchText = '';
-                                });
-                              },
-                              icon: const Icon(
-                                Icons.close,
-                                color: mutedColor,
-                              ),
-                            )
-                          : null,
-                      filled: true,
-                      fillColor: cardColor,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(15),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // ADD CUSTOMER
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: () => showCustomerDialog(),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Add New Customer'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: emerald,
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 15,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 25),
-
-                  // LIST HEADING
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'All Customers',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      Text(
-                        '${filteredCustomers.length} records',
-                        style: const TextStyle(
-                          color: mutedColor,
-                          fontSize: 12,
                         ),
                       ),
                     ],
                   ),
 
-                  const SizedBox(height: 14),
+                const SizedBox(height: 22),
 
-                  // CUSTOMER LIST
-                  if (filteredCustomers.isEmpty)
-                    emptyState(
-                      title: searchText.isEmpty
-                          ? 'No customers yet'
-                          : 'No matching customers',
-                      subtitle: searchText.isEmpty
-                          ? 'Add your first customer to get started.'
-                          : 'Try another name, phone, email or company.',
-                    )
-                  else
-                    ...filteredCustomers.map(customerCard),
-                ],
-              ),
-            );
-          },
-        );
-      },
+                TextField(
+                  controller: searchController,
+                  onChanged: (value) {
+                    setState(() {
+                      searchText = value;
+                    });
+                  },
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: 'Search customers...',
+                    hintStyle: const TextStyle(
+                      color: mutedColor,
+                      fontSize: 13,
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.search,
+                      color: emeraldLight,
+                    ),
+                    suffixIcon: searchText.isNotEmpty
+                        ? IconButton(
+                            onPressed: () {
+                              searchController.clear();
+                              setState(() {
+                                searchText = '';
+                              });
+                            },
+                            icon: const Icon(
+                              Icons.close,
+                              color: mutedColor,
+                            ),
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: cardColor,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () => showCustomerDialog(),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add New Customer'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: emerald,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 25),
+
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'All Customers',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '${filteredCustomers.length} records',
+                      style: const TextStyle(
+                        color: mutedColor,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 14),
+
+                if (isLoading)
+                  const Padding(
+                    padding: EdgeInsets.all(40),
+                    child: Center(
+                      child: CircularProgressIndicator(color: emerald),
+                    ),
+                  )
+                else if (loadError != null)
+                  emptyState(
+                    title: 'Unable to load customers',
+                    subtitle: loadError!,
+                  )
+                else if (filteredCustomers.isEmpty)
+                  emptyState(
+                    title: searchText.isEmpty
+                        ? 'No customers yet'
+                        : 'No matching customers',
+                    subtitle: searchText.isEmpty
+                        ? 'Add your first customer to get started.'
+                        : 'Try another name, phone, email or company.',
+                  )
+                else
+                  ...filteredCustomers.map(customerCard),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -692,6 +831,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
 
 class CustomerDialog extends StatefulWidget {
   final Customer? customer;
+
   final Future<void> Function(
     Map<String, dynamic> customerData,
   ) onSave;
@@ -746,6 +886,8 @@ class _CustomerDialogState extends State<CustomerDialog> {
     super.dispose();
   }
 
+  // SAVE CUSTOMER
+
   Future<void> saveCustomer() async {
     if (!formKey.currentState!.validate()) return;
 
@@ -773,11 +915,15 @@ class _CustomerDialogState extends State<CustomerDialog> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Unable to save customer: $error'),
+          content: Text(
+            'Unable to save customer: $error',
+          ),
         ),
       );
     }
   }
+
+  // INPUT FIELD
 
   Widget inputField({
     required TextEditingController controller,

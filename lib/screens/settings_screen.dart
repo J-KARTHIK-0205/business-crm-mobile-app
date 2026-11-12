@@ -35,19 +35,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
   static const muted = Color(0xFF9AA69D);
   static const card = Color(0xFF121A15);
 
+  // USER PROFILE DOCUMENT
   DocumentReference<Map<String, dynamic>> get userProfileRef {
     final user = currentUser;
+
     if (user == null) {
       throw Exception('No logged-in user found.');
     }
+
     return firestore.collection('users').doc(user.uid);
   }
 
-  DocumentReference<Map<String, dynamic>> get businessRef =>
-      firestore.collection('app_settings').doc('business');
+  // USER-SPECIFIC BUSINESS DOCUMENT
+  DocumentReference<Map<String, dynamic>> get businessRef {
+    final user = currentUser;
 
-  DocumentReference<Map<String, dynamic>> get preferencesRef =>
-      firestore.collection('app_settings').doc('preferences');
+    if (user == null) {
+      throw Exception('No logged-in user found.');
+    }
+
+    return firestore
+        .collection('app_settings')
+        .doc('business_${user.uid}');
+  }
+
+  // USER-SPECIFIC PREFERENCES DOCUMENT
+  DocumentReference<Map<String, dynamic>> get preferencesRef {
+    final user = currentUser;
+
+    if (user == null) {
+      throw Exception('No logged-in user found.');
+    }
+
+    return firestore
+        .collection('app_settings')
+        .doc('preferences_${user.uid}');
+  }
 
   @override
   void initState() {
@@ -65,9 +88,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.dispose();
   }
 
+  // --------------------------------------------------
+  // LOAD SETTINGS
+  // --------------------------------------------------
+
   Future<void> loadSettings() async {
     try {
       final user = currentUser;
+
       if (user == null) {
         throw Exception('Please log in again.');
       }
@@ -78,23 +106,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
         preferencesRef.get(),
       ]);
 
-      final profile = results[0].data() ?? <String, dynamic>{};
-      final business = results[1].data() ?? <String, dynamic>{};
-      final preferences = results[2].data() ?? <String, dynamic>{};
+      final profile =
+          results[0].data() ?? <String, dynamic>{};
+
+      final business =
+          results[1].data() ?? <String, dynamic>{};
+
+      final preferences =
+          results[2].data() ?? <String, dynamic>{};
 
       await user.reload();
-      final refreshedUser = FirebaseAuth.instance.currentUser;
+
+      final refreshedUser =
+          FirebaseAuth.instance.currentUser;
 
       if (!mounted) return;
 
       setState(() {
         nameController.text =
-            refreshedUser?.displayName ?? profile['name']?.toString() ?? '';
+            refreshedUser?.displayName ??
+            profile['name']?.toString() ??
+            '';
 
         emailController.text =
-            refreshedUser?.email ?? profile['email']?.toString() ?? '';
+            refreshedUser?.email ??
+            profile['email']?.toString() ??
+            '';
 
-        phoneController.text = profile['phone']?.toString() ?? '';
+        phoneController.text =
+            profile['phone']?.toString() ?? '';
 
         businessNameController.text =
             business['businessName']?.toString() ?? '';
@@ -112,7 +152,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ? preferences['emailNotifications'] as bool
                 : true;
 
-        final savedDarkMode = preferences['darkModeEnabled'];
+        final savedDarkMode =
+            preferences['darkModeEnabled'];
 
         darkModeEnabled = savedDarkMode is bool
             ? savedDarkMode
@@ -126,18 +167,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() => isLoading = false);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading settings: $error')),
+        SnackBar(
+          content: Text('Error loading settings: $error'),
+        ),
       );
     }
   }
+
+  // --------------------------------------------------
+  // SAVE SETTINGS
+  // --------------------------------------------------
 
   Future<void> saveSettings() async {
     if (isSaving) return;
 
     final user = currentUser;
+
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please log in again.')),
+        const SnackBar(
+          content: Text('Please log in again.'),
+        ),
+      );
+      return;
+    }
+
+    final updatedName = nameController.text.trim();
+
+    if (updatedName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Full name cannot be empty.'),
+        ),
       );
       return;
     }
@@ -145,25 +206,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => isSaving = true);
 
     try {
-      final updatedName = nameController.text.trim();
-
-      if (updatedName.isNotEmpty &&
-          updatedName != (user.displayName ?? '')) {
+      if (updatedName != (user.displayName ?? '')) {
         await user.updateDisplayName(updatedName);
+        await user.reload();
       }
+
+      final updatedUser =
+          FirebaseAuth.instance.currentUser;
 
       await Future.wait([
         userProfileRef.set({
           'uid': user.uid,
           'name': updatedName,
-          'email': user.email,
+          'email': updatedUser?.email ?? user.email,
           'phone': phoneController.text.trim(),
           'updatedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true)),
 
         businessRef.set({
-          'businessName': businessNameController.text.trim(),
-          'businessAddress': businessAddressController.text.trim(),
+          'businessName':
+              businessNameController.text.trim(),
+          'businessAddress':
+              businessAddressController.text.trim(),
           'updatedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true)),
 
@@ -178,21 +242,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Settings saved successfully.')),
+        const SnackBar(
+          content: Text('Settings saved successfully.'),
+        ),
       );
     } catch (error) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error saving settings: $error')),
+        SnackBar(
+          content: Text('Error saving settings: $error'),
+        ),
       );
     } finally {
-      if (mounted) setState(() => isSaving = false);
+      if (mounted) {
+        setState(() => isSaving = false);
+      }
     }
   }
 
+  // --------------------------------------------------
+  // UPDATE DARK MODE PREFERENCE
+  // --------------------------------------------------
+
   Future<void> updateDarkMode(bool value) async {
-    final previous = darkModeEnabled;
+    final previousValue = darkModeEnabled;
 
     setState(() => darkModeEnabled = value);
 
@@ -201,16 +275,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'darkModeEnabled': value,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            value
+                ? 'Dark mode preference saved.'
+                : 'Light mode preference saved.',
+          ),
+        ),
+      );
     } catch (error) {
       if (!mounted) return;
 
-      setState(() => darkModeEnabled = previous);
+      setState(() => darkModeEnabled = previousValue);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to update theme: $error')),
+        SnackBar(
+          content: Text('Unable to update theme: $error'),
+        ),
       );
     }
   }
+
+  // --------------------------------------------------
+  // LOGOUT
+  // --------------------------------------------------
 
   Future<void> logout() async {
     if (loggingOut) return;
@@ -223,10 +315,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Logout failed: $error')),
+        SnackBar(
+          content: Text('Logout failed: $error'),
+        ),
       );
     } finally {
-      if (mounted) setState(() => loggingOut = false);
+      if (mounted) {
+        setState(() => loggingOut = false);
+      }
     }
   }
 
@@ -235,18 +331,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: card,
-        title: const Text('Logout?'),
-        content: const Text('Are you sure you want to sign out?'),
+        title: const Text(
+          'Logout?',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'Are you sure you want to sign out?',
+          style: TextStyle(color: muted),
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
+            onPressed: () =>
+                Navigator.pop(dialogContext, false),
             child: const Text('Cancel'),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: Colors.red,
             ),
-            onPressed: () => Navigator.pop(dialogContext, true),
+            onPressed: () =>
+                Navigator.pop(dialogContext, true),
             child: const Text('Logout'),
           ),
         ],
@@ -258,9 +362,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Widget _sectionTitle(String title, String subtitle) {
+  // --------------------------------------------------
+  // SECTION TITLE
+  // --------------------------------------------------
+
+  Widget _sectionTitle(
+    String title,
+    String subtitle,
+  ) {
     return Padding(
-      padding: const EdgeInsets.only(top: 23, bottom: 12),
+      padding: const EdgeInsets.only(
+        top: 23,
+        bottom: 12,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -275,12 +389,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 4),
           Text(
             subtitle,
-            style: const TextStyle(color: muted, fontSize: 12),
+            style: const TextStyle(
+              color: muted,
+              fontSize: 12,
+            ),
           ),
         ],
       ),
     );
   }
+
+  // --------------------------------------------------
+  // INPUT FIELD
+  // --------------------------------------------------
 
   Widget _input({
     required String label,
@@ -301,7 +422,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           labelStyle: const TextStyle(color: muted),
           prefixIcon: Icon(icon, color: green),
           suffixIcon: readOnly
-              ? const Icon(Icons.lock_outline, color: muted)
+              ? const Icon(
+                  Icons.lock_outline,
+                  color: muted,
+                )
               : null,
           filled: true,
           fillColor: const Color(0xFF1A241D),
@@ -315,10 +439,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
               color: Colors.white.withValues(alpha: 0.06),
             ),
           ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(13),
+            borderSide: const BorderSide(
+              color: green,
+            ),
+          ),
         ),
       ),
     );
   }
+
+  // --------------------------------------------------
+  // PREFERENCE SWITCH CARD
+  // --------------------------------------------------
 
   Widget _switchCard({
     required String title,
@@ -350,17 +484,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         subtitle: Text(
           subtitle,
-          style: const TextStyle(color: muted, fontSize: 12),
+          style: const TextStyle(
+            color: muted,
+            fontSize: 12,
+          ),
         ),
       ),
     );
   }
 
+  // --------------------------------------------------
+  // SETTINGS SCREEN UI
+  // --------------------------------------------------
+
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: green),
+        child: CircularProgressIndicator(
+          color: green,
+        ),
       );
     }
 
@@ -377,21 +520,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
               fontWeight: FontWeight.bold,
             ),
           ),
+
           const SizedBox(height: 6),
+
           const Text(
             'Manage your profile, workspace and preferences.',
-            style: TextStyle(color: muted, fontSize: 13),
+            style: TextStyle(
+              color: muted,
+              fontSize: 13,
+            ),
           ),
+
+          // PROFILE INFORMATION
 
           _sectionTitle(
             'Profile Information',
             'Your personal account details',
           ),
+
           _input(
             label: 'Full Name',
             controller: nameController,
             icon: Icons.person_outline,
           ),
+
           _input(
             label: 'Email Address',
             controller: emailController,
@@ -399,6 +551,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             keyboardType: TextInputType.emailAddress,
             readOnly: true,
           ),
+
           _input(
             label: 'Phone Number',
             controller: phoneController,
@@ -406,43 +559,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
             keyboardType: TextInputType.phone,
           ),
 
+          // BUSINESS INFORMATION
+
           _sectionTitle(
             'Business Information',
             'Details about your workspace',
           ),
+
           _input(
             label: 'Business Name',
             controller: businessNameController,
             icon: Icons.business_outlined,
           ),
+
           _input(
             label: 'Business Address',
             controller: businessAddressController,
             icon: Icons.location_on_outlined,
           ),
 
+          // PREFERENCES
+
           _sectionTitle(
             'Preferences',
             'Customize your CRM experience',
           ),
+
           _switchCard(
             title: 'Push Notifications',
             subtitle: 'Receive app notifications',
             icon: Icons.notifications_active_outlined,
             value: notificationsEnabled,
             onChanged: (value) {
-              setState(() => notificationsEnabled = value);
+              setState(() {
+                notificationsEnabled = value;
+              });
             },
           ),
+
           _switchCard(
             title: 'Email Notifications',
             subtitle: 'Receive updates through email',
             icon: Icons.mark_email_unread_outlined,
             value: emailNotifications,
             onChanged: (value) {
-              setState(() => emailNotifications = value);
+              setState(() {
+                emailNotifications = value;
+              });
             },
           ),
+
           _switchCard(
             title: 'Dark Mode',
             subtitle: 'Use the dark CRM appearance',
@@ -452,6 +618,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
 
           const SizedBox(height: 20),
+
+          // SAVE SETTINGS BUTTON
+
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
@@ -466,19 +635,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     )
                   : const Icon(Icons.save_outlined),
-              label: Text(isSaving ? 'Saving...' : 'Save Settings'),
+              label: Text(
+                isSaving ? 'Saving...' : 'Save Settings',
+              ),
               style: FilledButton.styleFrom(
                 backgroundColor: green,
                 foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 15),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 15,
+                ),
               ),
             ),
           ),
+
+          // ACCOUNT SETTINGS
 
           _sectionTitle(
             'Account',
             'Manage your current session',
           ),
+
           Container(
             decoration: BoxDecoration(
               color: card,
@@ -488,7 +664,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             child: ListTile(
-              leading: const Icon(Icons.logout, color: Colors.redAccent),
+              leading: const Icon(
+                Icons.logout,
+                color: Colors.redAccent,
+              ),
               title: const Text(
                 'Logout',
                 style: TextStyle(
@@ -498,7 +677,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               subtitle: const Text(
                 'Sign out from your account',
-                style: TextStyle(color: muted, fontSize: 12),
+                style: TextStyle(
+                  color: muted,
+                  fontSize: 12,
+                ),
               ),
               trailing: loggingOut
                   ? const SizedBox(
@@ -517,6 +699,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onTap: loggingOut ? null : confirmLogout,
             ),
           ),
+
+          const SizedBox(height: 30),
+
+          const Center(
+            child: Text(
+              'Business CRM © 2026',
+              style: TextStyle(
+                color: muted,
+                fontSize: 12,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 15),
         ],
       ),
     );

@@ -1,9 +1,48 @@
+import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
 
 import 'customers_screen.dart';
+
+// =====================================================
+// LEAD MODEL
+// =====================================================
+
+class LeadRecord {
+  final String id;
+  final Map<String, dynamic> data;
+
+  const LeadRecord({required this.id, required this.data});
+
+  factory LeadRecord.fromJson(Map<String, dynamic> json) {
+    return LeadRecord(
+      id: (json['id'] ?? '').toString(),
+      data: {
+        'name': (json['name'] ?? json['lead_name'] ?? '').toString(),
+        'phone': (json['phone'] ?? '').toString(),
+        'email': (json['email'] ?? '').toString(),
+        'source': (json['source'] ?? '').toString(),
+        'category': (json['category'] ?? 'Other').toString(),
+        'priority': (json['priority'] ?? 'Medium').toString(),
+        'status': (json['status'] ?? 'New').toString(),
+        'notes': (json['notes'] ?? '').toString(),
+        'customerId': json['customer_id']?.toString(),
+        'customerName': (json['customerName'] ?? '').toString(),
+        'customerCompany': (json['customerCompany'] ?? '').toString(),
+        'organizationId': json['organization_id']?.toString(),
+        'createdAt': json['created_at'],
+        'updatedAt': json['updated_at'],
+      },
+    );
+  }
+}
+
+// =====================================================
+// LEADS SCREEN
+// =====================================================
 
 class LeadsScreen extends StatefulWidget {
   const LeadsScreen({super.key});
@@ -13,28 +52,69 @@ class LeadsScreen extends StatefulWidget {
 }
 
 class _LeadsScreenState extends State<LeadsScreen> {
-  final leads = FirebaseFirestore.instance.collection('leads');
-  final customers = FirebaseFirestore.instance.collection('customers');
-  final searchController = TextEditingController();
+  static const Color backgroundColor = Color(0xFF080C09);
+  static const Color cardColor = Color(0xFF121A15);
+  static const Color emerald = Color(0xFF00C853);
+  static const Color emeraldLight = Color(0xFF69F0AE);
+  static const Color mutedColor = Color(0xFF9AA69D);
+
+  static const String webApiBase = 'http://localhost/business_crm_api';
+
+  static const String androidApiBase = 'http://10.0.2.2/business_crm_api';
+
+  String get apiBase {
+    if (kIsWeb) return webApiBase;
+
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return androidApiBase;
+    }
+
+    return webApiBase;
+  }
+
+  String get leadsApiUrl => '$apiBase/api/leads/index.php';
+
+  String get customersApiUrl => '$apiBase/api/customers/index.php';
+
+  final TextEditingController searchController = TextEditingController();
+
+  List<LeadRecord> leads = [];
+  List<Customer> customers = [];
+
+  bool isLoading = true;
+  String? loadError;
 
   String searchText = '';
   String selectedStatus = 'All';
   String selectedPriority = 'All';
   String selectedCategory = 'All';
 
-  User? get user => FirebaseAuth.instance.currentUser;
-
-  static const green = Color(0xFF00C853);
-  static const muted = Color(0xFF9AA69D);
-  static const card = Color(0xFF121A15);
-
-  final statuses = [
-    'All', 'New', 'Contacted', 'Qualified', 'Converted', 'Lost'
+  final List<String> statuses = [
+    'All',
+    'New',
+    'Contacted',
+    'Qualified',
+    'Converted',
+    'Lost',
   ];
-  final priorities = ['All', 'High', 'Medium', 'Low'];
-  final categories = [
-    'All', 'Business', 'Individual', 'Enterprise', 'Other'
+
+  final List<String> priorities = ['All', 'High', 'Medium', 'Low'];
+
+  final List<String> categories = [
+    'All',
+    'Business',
+    'Individual',
+    'Enterprise',
+    'Other',
   ];
+
+  User? get currentUser => FirebaseAuth.instance.currentUser;
+
+  @override
+  void initState() {
+    super.initState();
+    loadScreenData();
+  }
 
   @override
   void dispose() {
@@ -42,137 +122,284 @@ class _LeadsScreenState extends State<LeadsScreen> {
     super.dispose();
   }
 
-  Color statusColor(String value) {
-    switch (value) {
-      case 'Converted':
-        return green;
-      case 'Qualified':
-        return Colors.lightBlue;
-      case 'Contacted':
-        return Colors.orange;
-      case 'Lost':
-        return Colors.redAccent;
-      default:
-        return muted;
+  // =====================================================
+  // API HELPERS
+  // =====================================================
+
+  Future<Map<String, String>> getHeaders() async {
+    final user = currentUser;
+
+    if (user == null) {
+      throw Exception('Please log in to continue.');
     }
-  }
 
-  Color priorityColor(String value) {
-    switch (value) {
-      case 'High':
-        return Colors.redAccent;
-      case 'Medium':
-        return Colors.orange;
-      default:
-        return green;
+    final token = await user.getIdToken(true);
+
+    if (token == null || token.isEmpty) {
+      throw Exception('Unable to get Firebase authentication token.');
     }
+
+    return {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
   }
 
-  Future<List<Customer>> loadCustomers() async {
-    final current = user;
-    if (current == null) return [];
-
-    final result = await customers
-        .where('userId', isEqualTo: current.uid)
-        .get();
-
-    return result.docs.map((doc) {
-      return Customer.fromFirestore(doc);
-    }).toList();
-  }
-
-  Future<void> showLeadDialog({
-    DocumentSnapshot<Map<String, dynamic>>? document,
-  }) async {
-    final current = user;
-    if (current == null) return;
-
-    List<Customer> availableCustomers = [];
+  Map<String, dynamic> decodeResponse(http.Response response) {
+    Map<String, dynamic> result;
 
     try {
-      availableCustomers = await loadCustomers();
+      final decoded = jsonDecode(response.body);
+
+      if (decoded is! Map<String, dynamic>) {
+        throw Exception('Invalid server response.');
+      }
+
+      result = decoded;
+    } catch (_) {
+      throw Exception(
+        'Server returned an invalid response '
+        '(HTTP ${response.statusCode}).',
+      );
+    }
+
+    if (response.statusCode < 200 ||
+        response.statusCode >= 300 ||
+        result['success'] != true) {
+      throw Exception((result['message'] ?? 'Request failed.').toString());
+    }
+
+    return result;
+  }
+
+  // =====================================================
+  // LOAD LEADS AND CUSTOMERS FROM MYSQL
+  // =====================================================
+
+  Future<List<LeadRecord>> fetchLeads() async {
+    final response = await http
+        .get(Uri.parse(leadsApiUrl), headers: await getHeaders())
+        .timeout(const Duration(seconds: 20));
+
+    final result = decodeResponse(response);
+    final rawData = result['data'];
+
+    if (rawData is! List) {
+      throw Exception('Invalid leads data received from server.');
+    }
+
+    return rawData
+        .whereType<Map<String, dynamic>>()
+        .map(LeadRecord.fromJson)
+        .toList();
+  }
+
+  Future<List<Customer>> fetchCustomers() async {
+    final response = await http
+        .get(Uri.parse(customersApiUrl), headers: await getHeaders())
+        .timeout(const Duration(seconds: 20));
+
+    final result = decodeResponse(response);
+    final rawData = result['data'];
+
+    if (rawData is! List) {
+      throw Exception('Invalid customers data received from server.');
+    }
+
+    return rawData
+        .whereType<Map<String, dynamic>>()
+        .map((json) {
+          return Customer(
+            id: (json['id'] ?? '').toString(),
+            name: (json['customer_name'] ?? json['name'] ?? '').toString(),
+            phone: (json['phone'] ?? '').toString(),
+            email: (json['email'] ?? '').toString(),
+            company: (json['company'] ?? '').toString(),
+          );
+        })
+        .where((customer) => customer.id.isNotEmpty)
+        .toList();
+  }
+
+  Future<void> loadScreenData() async {
+    if (currentUser == null) {
+      if (!mounted) return;
+
+      setState(() {
+        isLoading = false;
+        loadError = 'Please log in to view leads.';
+      });
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        isLoading = true;
+        loadError = null;
+      });
+    }
+
+    try {
+      final results = await Future.wait([fetchLeads(), fetchCustomers()]);
+
+      if (!mounted) return;
+
+      setState(() {
+        leads = results[0] as List<LeadRecord>;
+        customers = results[1] as List<Customer>;
+        isLoading = false;
+      });
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not load customers: $error')),
+
+      setState(() {
+        isLoading = false;
+        loadError = error.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
+  // =====================================================
+  // ADD / UPDATE LEAD
+  // =====================================================
+
+  Future<void> saveLead({
+    required Map<String, dynamic> leadData,
+    String? leadId,
+  }) async {
+    final headers = await getHeaders();
+
+    final payload = <String, dynamic>{
+      'name': leadData['name'],
+      'phone': leadData['phone'],
+      'email': leadData['email'],
+      'source': leadData['source'],
+      'category': leadData['category'],
+      'priority': leadData['priority'],
+      'status': leadData['status'],
+      'notes': leadData['notes'],
+      'customerId': leadData['customerId'],
+    };
+
+    if (leadId == null) {
+      final response = await http
+          .post(
+            Uri.parse(leadsApiUrl),
+            headers: headers,
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      decodeResponse(response);
+    } else {
+      payload['id'] = int.tryParse(leadId);
+
+      if (payload['id'] == null) {
+        throw Exception('Invalid lead ID.');
+      }
+
+      final response = await http
+          .put(
+            Uri.parse(leadsApiUrl),
+            headers: headers,
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      decodeResponse(response);
+    }
+
+    await loadScreenData();
+
+    if (loadError != null) {
+      throw Exception(
+        'Lead was saved, but refreshing the list failed: $loadError',
       );
+    }
+  }
+
+  // =====================================================
+  // SHOW ADD / EDIT DIALOG
+  // =====================================================
+
+  Future<void> showLeadDialog({LeadRecord? lead}) async {
+    if (currentUser == null) {
+      showMessage('Please log in to continue.');
       return;
+    }
+
+    if (customers.isEmpty) {
+      try {
+        final loadedCustomers = await fetchCustomers();
+
+        if (!mounted) return;
+
+        setState(() {
+          customers = loadedCustomers;
+        });
+      } catch (error) {
+        showMessage('Unable to load customers: $error');
+        return;
+      }
     }
 
     if (!mounted) return;
 
-    final data = document?.data() ?? <String, dynamic>{};
+    String? initialCustomerId = lead?.data['customerId']?.toString();
 
-    await showDialog<void>(
+    if (initialCustomerId != null &&
+        !customers.any((customer) => customer.id == initialCustomerId)) {
+      initialCustomerId = null;
+    }
+
+    final result = await showDialog<bool>(
       context: context,
-      builder: (_) => _LeadDialog(
-        data: data,
-        customers: availableCustomers,
-        onSave: (leadData) async {
-          try {
-            leadData['updatedAt'] = FieldValue.serverTimestamp();
+      builder: (dialogContext) {
+        return _LeadDialog(
+          data: lead?.data ?? <String, dynamic>{},
+          customers: customers,
+          initialCustomerId: initialCustomerId,
+          onSave: (data) async {
+            await saveLead(leadData: data, leadId: lead?.id);
+          },
+        );
+      },
+    );
 
-            final customerId = leadData['customerId'];
-            if (customerId != null) {
-              final linked = await customers.doc(customerId).get();
-              if (!linked.exists ||
-                  linked.data()?['userId'] != current.uid) {
-                return 'The selected customer is not available.';
-              }
-              leadData['customerName'] =
-                  linked.data()?['name'] ?? '';
-              leadData['customerCompany'] =
-                  linked.data()?['company'] ?? '';
-            } else {
-              leadData['customerName'] = '';
-              leadData['customerCompany'] = '';
-            }
+    if (!mounted || result != true) return;
 
-            if (document == null) {
-              leadData['userId'] = current.uid;
-              leadData['createdAt'] = FieldValue.serverTimestamp();
-              await leads.add(leadData);
-            } else {
-              final ref = leads.doc(document.id);
-              final existing = await ref.get();
-
-              if (!existing.exists ||
-                  existing.data()?['userId'] != current.uid) {
-                return 'You cannot edit a lead you do not own.';
-              }
-
-              await ref.update(leadData);
-            }
-
-            return null;
-          } catch (error) {
-            return 'Unable to save lead: $error';
-          }
-        },
-      ),
+    showMessage(
+      lead == null ? 'Lead added successfully.' : 'Lead updated successfully.',
     );
   }
 
-  Future<void> deleteLead(String id) async {
-    final current = user;
-    if (current == null) return;
+  // =====================================================
+  // DELETE LEAD
+  // =====================================================
 
+  Future<void> deleteLead(LeadRecord lead) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: card,
-        title: const Text('Delete Lead?'),
-        content: const Text(
-          'This lead will be permanently deleted.',
+        backgroundColor: cardColor,
+        title: const Text(
+          'Delete Lead?',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          'Are you sure you want to delete ${lead.data['name']}?',
+          style: const TextStyle(color: mutedColor),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('Cancel'),
           ),
-          FilledButton(
-            style: FilledButton.styleFrom(
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(dialogContext, true),
             child: const Text('Delete'),
@@ -184,54 +411,66 @@ class _LeadsScreenState extends State<LeadsScreen> {
     if (confirm != true) return;
 
     try {
-      final ref = leads.doc(id);
-      final doc = await ref.get();
+      final uri = Uri.parse(leadsApiUrl)
+          .replace(queryParameters: {'id': lead.id});
 
-      if (!doc.exists || doc.data()?['userId'] != current.uid) {
-        throw Exception('You cannot delete this lead.');
-      }
+      final response = await http
+          .delete(uri, headers: await getHeaders())
+          .timeout(const Duration(seconds: 20));
 
-      await ref.delete();
+      decodeResponse(response);
+
+      await loadScreenData();
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lead deleted successfully.')),
-      );
+
+      if (loadError != null) {
+        showMessage('Lead deleted, but refresh failed: $loadError');
+      } else {
+        showMessage('Lead deleted successfully.');
+      }
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Delete failed: $error')),
-      );
+      showMessage('Delete failed: $error');
     }
   }
 
-  Future<void> showLeadDetails(
-    DocumentSnapshot<Map<String, dynamic>> document,
-  ) async {
-    final data = document.data() ?? {};
+  // =====================================================
+  // DETAILS DIALOG
+  // =====================================================
 
-    await showDialog<void>(
+  void showLeadDetails(LeadRecord lead) {
+    final data = lead.data;
+
+    showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: card,
+        backgroundColor: cardColor,
         title: Text(
           (data['name'] ?? 'Lead Details').toString(),
-          style: const TextStyle(color: Colors.white),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _detail('Phone', data['phone']),
-              _detail('Email', data['email']),
-              _detail('Source', data['source']),
-              _detail('Status', data['status']),
-              _detail('Priority', data['priority']),
-              _detail('Category', data['category']),
-              _detail('Linked Customer', data['customerName']),
-              _detail('Notes', data['notes']),
-            ],
+        content: SizedBox(
+          width: 420,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _detailLine('Phone', data['phone']),
+                _detailLine('Email', data['email']),
+                _detailLine('Source', data['source']),
+                _detailLine('Status', data['status']),
+                _detailLine('Priority', data['priority']),
+                _detailLine('Category', data['category']),
+                _detailLine('Linked Customer', data['customerName']),
+                _detailLine('Company', data['customerCompany']),
+                _detailLine('Notes', data['notes']),
+              ],
+            ),
           ),
         ),
         actions: [
@@ -239,193 +478,106 @@ class _LeadsScreenState extends State<LeadsScreen> {
             onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Close'),
           ),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              showLeadDialog(lead: lead);
+            },
+            icon: const Icon(Icons.edit_outlined),
+            label: const Text('Edit Lead'),
+          ),
         ],
       ),
     );
   }
 
-  Widget _detail(String label, dynamic value) {
-    final text = (value ?? '').toString();
+  Widget _detailLine(String label, dynamic value) {
+    final text = (value ?? '').toString().trim();
+
     if (text.isEmpty) return const SizedBox.shrink();
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 11),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(color: muted, fontSize: 12)),
-          const SizedBox(height: 3),
-          Text(text, style: const TextStyle(color: Colors.white)),
-        ],
-      ),
-    );
-  }
-
-  Widget _filter({
-    required String label,
-    required String value,
-    required List<String> options,
-    required ValueChanged<String> onChanged,
-  }) {
-    return SizedBox(
-      width: 145,
-      child: DropdownButtonFormField<String>(
-        initialValue: value,
-        isExpanded: true,
-        dropdownColor: card,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: const TextStyle(color: muted),
-          filled: true,
-          fillColor: card,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(13),
-            borderSide: BorderSide.none,
-          ),
+      padding: const EdgeInsets.only(bottom: 12),
+      child: RichText(
+        text: TextSpan(
+          style: const TextStyle(color: mutedColor, fontSize: 14),
+          children: [
+            TextSpan(
+              text: '$label: ',
+              style: const TextStyle(
+                color: emeraldLight,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            TextSpan(text: text),
+          ],
         ),
-        items: options.map((option) {
-          return DropdownMenuItem(
-            value: option,
-            child: Text(option),
-          );
-        }).toList(),
-        onChanged: (next) {
-          if (next != null) onChanged(next);
-        },
       ),
     );
   }
 
-  Widget _summary(String label, int value, IconData icon) {
+  // =====================================================
+  // COLORS AND SMALL UI HELPERS
+  // =====================================================
+
+  Color statusColor(String status) {
+    switch (status) {
+      case 'Contacted':
+        return Colors.orange;
+      case 'Qualified':
+        return Colors.blue;
+      case 'Converted':
+        return Colors.green;
+      case 'Lost':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Color priorityColor(String priority) {
+    switch (priority) {
+      case 'High':
+        return Colors.red;
+      case 'Medium':
+        return Colors.orange;
+      default:
+        return emeraldLight;
+    }
+  }
+
+  void showMessage(String message) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Widget _summaryCard(String title, int count, IconData icon, Color color) {
     return Container(
-      width: 150,
-      padding: const EdgeInsets.all(15),
+      width: 155,
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.06),
-        ),
+        color: cardColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: green),
-          const SizedBox(height: 10),
+          Icon(icon, color: color, size: 25),
+          const SizedBox(height: 12),
           Text(
-            '$value',
+            count.toString(),
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 23,
+              fontSize: 25,
               fontWeight: FontWeight.bold,
             ),
           ),
-          Text(label, style: const TextStyle(color: muted, fontSize: 12)),
-        ],
-      ),
-    );
-  }
-
-  Widget _leadCard(
-    DocumentSnapshot<Map<String, dynamic>> document,
-  ) {
-    final data = document.data() ?? {};
-    final name = (data['name'] ?? 'Unnamed Lead').toString();
-    final phone = (data['phone'] ?? '').toString();
-    final email = (data['email'] ?? '').toString();
-    final status = (data['status'] ?? 'New').toString();
-    final priority = (data['priority'] ?? 'Medium').toString();
-    final customerName = (data['customerName'] ?? '').toString();
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: card,
-        borderRadius: BorderRadius.circular(17),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.06),
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 45,
-            height: 45,
-            decoration: BoxDecoration(
-              color: green.withValues(alpha: 0.13),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Center(
-              child: Text(
-                name.isEmpty ? '?' : name[0].toUpperCase(),
-                style: const TextStyle(
-                  color: Color(0xFF69F0AE),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 19,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                  ),
-                ),
-                if (phone.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(phone, style: const TextStyle(color: muted, fontSize: 12)),
-                ],
-                if (email.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    email,
-                    style: const TextStyle(color: muted, fontSize: 12),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 7,
-                  runSpacing: 7,
-                  children: [
-                    _tag(status, statusColor(status)),
-                    _tag('$priority Priority', priorityColor(priority)),
-                    if (customerName.isNotEmpty)
-                      _tag('Customer: $customerName', Colors.tealAccent),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert, color: muted),
-            color: card,
-            onSelected: (value) {
-              if (value == 'details') {
-                showLeadDetails(document);
-              } else if (value == 'edit') {
-                showLeadDialog(document: document);
-              } else if (value == 'delete') {
-                deleteLead(document.id);
-              }
-            },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'details', child: Text('View details')),
-              PopupMenuItem(value: 'edit', child: Text('Edit')),
-              PopupMenuItem(value: 'delete', child: Text('Delete')),
-            ],
-          ),
+          const SizedBox(height: 4),
+          Text(title, style: const TextStyle(color: mutedColor, fontSize: 13)),
         ],
       ),
     );
@@ -433,198 +585,542 @@ class _LeadsScreenState extends State<LeadsScreen> {
 
   Widget _tag(String label, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: color.withValues(alpha: 0.13),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         label,
         style: TextStyle(
           color: color,
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final current = user;
-    if (current == null) {
-      return const Center(child: Text('Please log in to view leads.'));
-    }
+  Widget _leadInfo(IconData icon, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 5),
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: mutedColor),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Text(
+              value,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: mutedColor, fontSize: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: leads.where('userId', isEqualTo: current.uid).snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return Center(child: Text('Unable to load leads: ${snapshot.error}'));
-        }
-        if (!snapshot.hasData) {
-          return const Center(
-            child: CircularProgressIndicator(color: green),
-          );
-        }
+  // =====================================================
+  // LEAD CARD
+  // =====================================================
 
-        final documents = snapshot.data!.docs;
+  Widget _leadCard(LeadRecord lead) {
+    final data = lead.data;
 
-        int countStatus(String status) => documents
-            .where((doc) => doc.data()['status'] == status)
-            .length;
+    final name = (data['name'] ?? 'Unnamed Lead').toString();
+    final phone = (data['phone'] ?? '').toString();
+    final email = (data['email'] ?? '').toString();
+    final source = (data['source'] ?? '').toString();
+    final status = (data['status'] ?? 'New').toString();
+    final priority = (data['priority'] ?? 'Medium').toString();
+    final category = (data['category'] ?? 'Other').toString();
+    final customerName = (data['customerName'] ?? '').toString();
 
-        final query = searchText.toLowerCase().trim();
-
-        final filtered = documents.where((doc) {
-          final data = doc.data();
-          final matchesSearch =
-              (data['name'] ?? '').toString().toLowerCase().contains(query) ||
-              (data['phone'] ?? '').toString().contains(searchText.trim()) ||
-              (data['email'] ?? '').toString().toLowerCase().contains(query);
-
-          return matchesSearch &&
-              (selectedStatus == 'All' || data['status'] == selectedStatus) &&
-              (selectedPriority == 'All' || data['priority'] == selectedPriority) &&
-              (selectedCategory == 'All' || data['category'] == selectedCategory);
-        }).toList();
-
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              padding: const EdgeInsets.only(bottom: 25),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Leads',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 25,
-                      fontWeight: FontWeight.bold,
-                    ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 13),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () => showLeadDetails(lead),
+        child: Padding(
+          padding: const EdgeInsets.all(15),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 27,
+                backgroundColor: const Color(0xFF103B25),
+                child: Text(
+                  name.isNotEmpty ? name[0].toUpperCase() : '?',
+                  style: const TextStyle(
+                    color: emeraldLight,
+                    fontSize: 19,
+                    fontWeight: FontWeight.bold,
                   ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Track, organize and convert potential customers.',
-                    style: TextStyle(color: muted, fontSize: 13),
-                  ),
-                  const SizedBox(height: 18),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: [
-                      _summary('Total Leads', documents.length, Icons.groups_outlined),
-                      _summary('New', countStatus('New'), Icons.person_add_alt),
-                      _summary('Qualified', countStatus('Qualified'), Icons.verified_outlined),
-                      _summary('Converted', countStatus('Converted'), Icons.check_circle_outline),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  TextField(
-                    controller: searchController,
-                    onChanged: (value) => setState(() => searchText = value),
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText: 'Search leads by name, phone or email...',
-                      hintStyle: const TextStyle(color: muted, fontSize: 12),
-                      prefixIcon: const Icon(Icons.search, color: green),
-                      filled: true,
-                      fillColor: card,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide.none,
+                ),
+              ),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: () => showLeadDialog(),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Add New Lead'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: green,
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
+                    const SizedBox(height: 8),
+                    if (phone.isNotEmpty)
+                      _leadInfo(Icons.phone_outlined, phone),
+                    if (email.isNotEmpty)
+                      _leadInfo(Icons.email_outlined, email),
+                    if (source.isNotEmpty)
+                      _leadInfo(Icons.campaign_outlined, source),
+                    const SizedBox(height: 7),
+                    Wrap(
+                      spacing: 7,
+                      runSpacing: 7,
+                      children: [
+                        _tag(status, statusColor(status)),
+                        _tag('$priority Priority', priorityColor(priority)),
+                        _tag(category, emeraldLight),
+                        if (customerName.isNotEmpty)
+                          _tag('Customer: $customerName', Colors.tealAccent),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuButton<String>(
+                iconColor: mutedColor,
+                color: cardColor,
+                onSelected: (value) {
+                  if (value == 'details') {
+                    showLeadDetails(lead);
+                  } else if (value == 'edit') {
+                    showLeadDialog(lead: lead);
+                  } else if (value == 'delete') {
+                    deleteLead(lead);
+                  }
+                },
+                itemBuilder: (context) => const [
+                  PopupMenuItem(
+                    value: 'details',
+                    child: Text(
+                      'View Details',
+                      style: TextStyle(color: Colors.white),
                     ),
                   ),
-                  const SizedBox(height: 15),
-                  Wrap(
-                    spacing: 9,
-                    runSpacing: 9,
-                    children: [
-                      _filter(
-                        label: 'Status',
-                        value: selectedStatus,
-                        options: statuses,
-                        onChanged: (value) => setState(() => selectedStatus = value),
-                      ),
-                      _filter(
-                        label: 'Priority',
-                        value: selectedPriority,
-                        options: priorities,
-                        onChanged: (value) => setState(() => selectedPriority = value),
-                      ),
-                      _filter(
-                        label: 'Category',
-                        value: selectedCategory,
-                        options: categories,
-                        onChanged: (value) => setState(() => selectedCategory = value),
-                      ),
-                    ],
+                  PopupMenuItem(
+                    value: 'edit',
+                    child: Text('Edit', style: TextStyle(color: Colors.white)),
                   ),
-                  const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'All Leads',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      Text('${filtered.length} records',
-                          style: const TextStyle(color: muted, fontSize: 12)),
-                    ],
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: Text(
+                      'Delete',
+                      style: TextStyle(color: Colors.redAccent),
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  if (filtered.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.all(35),
-                      child: Center(
-                        child: Text(
-                          'No leads found. Add a lead or adjust your filters.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: muted),
-                        ),
-                      ),
-                    )
-                  else
-                    ...filtered.map(_leadCard),
                 ],
               ),
-            );
-          },
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // =====================================================
+  // SEARCH AND FILTERS
+  // =====================================================
+
+  Widget _searchField() {
+    return TextField(
+      controller: searchController,
+      style: const TextStyle(color: Colors.white),
+      onChanged: (value) {
+        setState(() {
+          searchText = value;
+        });
+      },
+      decoration: InputDecoration(
+        hintText: 'Search leads by name, phone or email...',
+        hintStyle: const TextStyle(color: mutedColor),
+        prefixIcon: const Icon(Icons.search, color: emerald),
+        filled: true,
+        fillColor: cardColor,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
+        ),
+      ),
+    );
+  }
+
+  Widget _filterDropdown({
+    required String label,
+    required String value,
+    required List<String> items,
+    required ValueChanged<String> onChanged,
+  }) {
+    return SizedBox(
+      width: 150,
+      child: DropdownButtonFormField<String>(
+        key: ValueKey('$label-$value'),
+        initialValue: value,
+        isExpanded: true,
+        dropdownColor: cardColor,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: const TextStyle(color: mutedColor),
+          filled: true,
+          fillColor: cardColor,
+          isDense: true,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide.none,
+          ),
+        ),
+        items: items.map((item) {
+          return DropdownMenuItem<String>(value: item, child: Text(item));
+        }).toList(),
+        onChanged: (newValue) {
+          if (newValue != null) onChanged(newValue);
+        },
+      ),
+    );
+  }
+
+  List<LeadRecord> get filteredLeads {
+    final query = searchText.toLowerCase().trim();
+
+    return leads.where((lead) {
+      final data = lead.data;
+
+      final name = (data['name'] ?? '').toString().toLowerCase();
+      final phone = (data['phone'] ?? '').toString();
+      final email = (data['email'] ?? '').toString().toLowerCase();
+
+      final matchesSearch =
+          name.contains(query) ||
+          phone.contains(searchText.trim()) ||
+          email.contains(query);
+
+      final matchesStatus =
+          selectedStatus == 'All' || data['status'] == selectedStatus;
+
+      final matchesPriority =
+          selectedPriority == 'All' || data['priority'] == selectedPriority;
+
+      final matchesCategory =
+          selectedCategory == 'All' || data['category'] == selectedCategory;
+
+      return matchesSearch &&
+          matchesStatus &&
+          matchesPriority &&
+          matchesCategory;
+    }).toList();
+  }
+
+  int countStatus(String status) {
+    return leads.where((lead) => lead.data['status'] == status).length;
+  }
+
+  // =====================================================
+  // MAIN BUILD
+  // =====================================================
+
+  @override
+  Widget build(BuildContext context) {
+    if (currentUser == null) {
+      return const Center(
+        child: Text(
+          'Please log in to view leads.',
+          style: TextStyle(color: Colors.white),
+        ),
+      );
+    }
+
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator(color: emerald));
+    }
+
+    if (loadError != null && leads.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.cloud_off_outlined,
+                color: Colors.orange,
+                size: 45,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Unable to load leads',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                loadError!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: mutedColor),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: loadScreenData,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Try Again'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final filtered = filteredLeads;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return RefreshIndicator(
+          color: emerald,
+          onRefresh: loadScreenData,
+          child: Scrollbar(
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Leads Management',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 25,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Track, organize and convert your potential customers.',
+                      style: TextStyle(color: mutedColor),
+                    ),
+                    const SizedBox(height: 22),
+
+                    // SUMMARY CARDS
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        _summaryCard(
+                          'Total Leads',
+                          leads.length,
+                          Icons.people_outline,
+                          emerald,
+                        ),
+                        _summaryCard(
+                          'New',
+                          countStatus('New'),
+                          Icons.person_add_alt,
+                          Colors.orange,
+                        ),
+                        _summaryCard(
+                          'Contacted',
+                          countStatus('Contacted'),
+                          Icons.call,
+                          Colors.deepOrange,
+                        ),
+                        _summaryCard(
+                          'Qualified',
+                          countStatus('Qualified'),
+                          Icons.verified,
+                          Colors.blue,
+                        ),
+                        _summaryCard(
+                          'Converted',
+                          countStatus('Converted'),
+                          Icons.check_circle,
+                          emeraldLight,
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 22),
+
+                    // SEARCH AND ADD
+                    LayoutBuilder(
+                      builder: (context, searchConstraints) {
+                        if (searchConstraints.maxWidth < 520) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _searchField(),
+                              const SizedBox(height: 12),
+                              _addLeadButton(),
+                            ],
+                          );
+                        }
+
+                        return Row(
+                          children: [
+                            Expanded(child: _searchField()),
+                            const SizedBox(width: 12),
+                            _addLeadButton(),
+                          ],
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // FILTERS
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        _filterDropdown(
+                          label: 'Status',
+                          value: selectedStatus,
+                          items: statuses,
+                          onChanged: (value) {
+                            setState(() => selectedStatus = value);
+                          },
+                        ),
+                        _filterDropdown(
+                          label: 'Priority',
+                          value: selectedPriority,
+                          items: priorities,
+                          onChanged: (value) {
+                            setState(() => selectedPriority = value);
+                          },
+                        ),
+                        _filterDropdown(
+                          label: 'Category',
+                          value: selectedCategory,
+                          items: categories,
+                          onChanged: (value) {
+                            setState(() => selectedCategory = value);
+                          },
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 22),
+
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'All Leads',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 19,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          '${filtered.length} records',
+                          style: const TextStyle(color: mutedColor),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 13),
+
+                    if (filtered.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 50),
+                        child: Center(
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.person_search_outlined,
+                                size: 55,
+                                color: mutedColor,
+                              ),
+                              SizedBox(height: 12),
+                              Text(
+                                'No leads found',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              SizedBox(height: 5),
+                              Text(
+                                'Add a lead or change your filters.',
+                                style: TextStyle(color: mutedColor),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    else
+                      ...filtered.map(_leadCard),
+                  ],
+                ),
+              ),
+            ),
+          ),
         );
       },
     );
   }
+
+  Widget _addLeadButton() {
+    return ElevatedButton.icon(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: emerald,
+        foregroundColor: Colors.black,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      ),
+      onPressed: () => showLeadDialog(),
+      icon: const Icon(Icons.add),
+      label: const Text(
+        'Add New Lead',
+        style: TextStyle(fontWeight: FontWeight.bold),
+      ),
+    );
+  }
 }
+
+// =====================================================
+// ADD / EDIT LEAD DIALOG
+// =====================================================
 
 class _LeadDialog extends StatefulWidget {
   final Map<String, dynamic> data;
   final List<Customer> customers;
-  final Future<String?> Function(Map<String, dynamic>) onSave;
+  final String? initialCustomerId;
+  final Future<void> Function(Map<String, dynamic>) onSave;
 
   const _LeadDialog({
     required this.data,
     required this.customers,
+    required this.initialCustomerId,
     required this.onSave,
   });
 
@@ -633,8 +1129,9 @@ class _LeadDialog extends StatefulWidget {
 }
 
 class _LeadDialogState extends State<_LeadDialog> {
-  final formKey = GlobalKey<FormState>();
-
+  static const Color cardColor = Color(0xFF121A15);
+  static const Color emerald = Color(0xFF00C853);
+  static const Color mutedColor = Color(0xFF9AA69D);
   late final TextEditingController nameController;
   late final TextEditingController phoneController;
   late final TextEditingController emailController;
@@ -646,32 +1143,60 @@ class _LeadDialogState extends State<_LeadDialog> {
   late String category;
 
   String? customerId;
-  bool saving = false;
+  bool isSaving = false;
 
-  final statuses = ['New', 'Contacted', 'Qualified', 'Converted', 'Lost'];
-  final priorities = ['High', 'Medium', 'Low'];
-  final categories = ['Business', 'Individual', 'Enterprise', 'Other'];
+  final List<String> statuses = [
+    'New',
+    'Contacted',
+    'Qualified',
+    'Converted',
+    'Lost',
+  ];
+
+  final List<String> priorities = ['High', 'Medium', 'Low'];
+
+  final List<String> categories = [
+    'Business',
+    'Individual',
+    'Enterprise',
+    'Other',
+  ];
 
   @override
   void initState() {
     super.initState();
+
     final data = widget.data;
 
-    nameController = TextEditingController(text: data['name'] ?? '');
-    phoneController = TextEditingController(text: data['phone'] ?? '');
-    emailController = TextEditingController(text: data['email'] ?? '');
-    sourceController = TextEditingController(text: data['source'] ?? '');
-    notesController = TextEditingController(text: data['notes'] ?? '');
+    nameController = TextEditingController(
+      text: (data['name'] ?? '').toString(),
+    );
 
-    status = statuses.contains(data['status']) ? data['status'] : 'New';
-    priority = priorities.contains(data['priority']) ? data['priority'] : 'Medium';
-    category = categories.contains(data['category']) ? data['category'] : 'Business';
+    phoneController = TextEditingController(
+      text: (data['phone'] ?? '').toString(),
+    );
 
-    customerId = data['customerId']?.toString();
-    if (customerId != null &&
-        !widget.customers.any((customer) => customer.id == customerId)) {
-      customerId = null;
-    }
+    emailController = TextEditingController(
+      text: (data['email'] ?? '').toString(),
+    );
+
+    sourceController = TextEditingController(
+      text: (data['source'] ?? '').toString(),
+    );
+
+    notesController = TextEditingController(
+      text: (data['notes'] ?? '').toString(),
+    );
+
+    status = (data['status'] ?? 'New').toString();
+    priority = (data['priority'] ?? 'Medium').toString();
+    category = (data['category'] ?? 'Business').toString();
+
+    if (!statuses.contains(status)) status = 'New';
+    if (!priorities.contains(priority)) priority = 'Medium';
+    if (!categories.contains(category)) category = 'Business';
+
+    customerId = widget.initialCustomerId;
   }
 
   @override
@@ -684,12 +1209,24 @@ class _LeadDialogState extends State<_LeadDialog> {
     super.dispose();
   }
 
-  Future<void> save() async {
-    if (!formKey.currentState!.validate()) return;
+  Future<void> saveLead() async {
+    if (nameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Lead name is required.')));
+      return;
+    }
 
-    setState(() => saving = true);
+    if (phoneController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Phone number is required.')),
+      );
+      return;
+    }
 
-    final error = await widget.onSave({
+    setState(() => isSaving = true);
+
+    final leadData = <String, dynamic>{
       'name': nameController.text.trim(),
       'phone': phoneController.text.trim(),
       'email': emailController.text.trim(),
@@ -699,21 +1236,28 @@ class _LeadDialogState extends State<_LeadDialog> {
       'priority': priority,
       'category': category,
       'customerId': customerId,
-    });
+    };
 
-    if (!mounted) return;
+    try {
+      await widget.onSave(leadData);
 
-    if (error == null) {
-      Navigator.pop(context);
-    } else {
-      setState(() => saving = false);
+      if (!mounted) return;
+
+      Navigator.pop(context, true);
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() => isSaving = false);
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error)),
+        SnackBar(
+          content: Text(error.toString().replaceFirst('Exception: ', '')),
+        ),
       );
     }
   }
 
-  Widget _field(
+  Widget _textField(
     TextEditingController controller,
     String label,
     IconData icon, {
@@ -722,14 +1266,16 @@ class _LeadDialogState extends State<_LeadDialog> {
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: TextFormField(
+      child: TextField(
         controller: controller,
+        enabled: !isSaving,
         keyboardType: keyboardType,
         maxLines: maxLines,
         style: const TextStyle(color: Colors.white),
         decoration: InputDecoration(
           labelText: label,
-          prefixIcon: Icon(icon, color: const Color(0xFF00C853)),
+          labelStyle: const TextStyle(color: mutedColor),
+          prefixIcon: Icon(icon, color: emerald),
           filled: true,
           fillColor: const Color(0xFF1A241D),
           border: OutlineInputBorder(
@@ -741,20 +1287,23 @@ class _LeadDialogState extends State<_LeadDialog> {
     );
   }
 
-  Widget _dropdown(
-    String label,
-    String value,
-    List<String> options,
-    ValueChanged<String?> onChanged,
-  ) {
+  Widget _dropdown({
+    required String label,
+    required String value,
+    required List<String> items,
+    required ValueChanged<String?> onChanged,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: DropdownButtonFormField<String>(
+        key: ValueKey('$label-$value'),
         initialValue: value,
-        dropdownColor: const Color(0xFF1A241D),
+        isExpanded: true,
+        dropdownColor: cardColor,
         style: const TextStyle(color: Colors.white),
         decoration: InputDecoration(
           labelText: label,
+          labelStyle: const TextStyle(color: mutedColor),
           filled: true,
           fillColor: const Color(0xFF1A241D),
           border: OutlineInputBorder(
@@ -762,115 +1311,158 @@ class _LeadDialogState extends State<_LeadDialog> {
             borderSide: BorderSide.none,
           ),
         ),
-        items: options.map((item) {
-          return DropdownMenuItem(value: item, child: Text(item));
+        items: items.map((item) {
+          return DropdownMenuItem<String>(value: item, child: Text(item));
         }).toList(),
-        onChanged: saving ? null : onChanged,
+        onChanged: isSaving ? null : onChanged,
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final editing = widget.data.isNotEmpty;
-
     return AlertDialog(
-      backgroundColor: const Color(0xFF121A15),
+      backgroundColor: cardColor,
       title: Text(
-        editing ? 'Edit Lead' : 'Add New Lead',
-        style: const TextStyle(color: Colors.white),
+        widget.data.isEmpty ? 'Add New Lead' : 'Edit Lead',
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+        ),
       ),
       content: SizedBox(
         width: 440,
         child: SingleChildScrollView(
-          child: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _field(nameController, 'Lead Name *', Icons.person_outline),
-                _field(
-                  phoneController,
-                  'Phone Number',
-                  Icons.phone_outlined,
-                  keyboardType: TextInputType.phone,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _textField(nameController, 'Lead Name', Icons.person_outline),
+              _textField(
+                phoneController,
+                'Phone Number',
+                Icons.phone_outlined,
+                keyboardType: TextInputType.phone,
+              ),
+              _textField(
+                emailController,
+                'Email Address',
+                Icons.email_outlined,
+                keyboardType: TextInputType.emailAddress,
+              ),
+              _textField(
+                sourceController,
+                'Lead Source',
+                Icons.campaign_outlined,
+              ),
+              _textField(notesController, 'Notes', Icons.notes, maxLines: 3),
+
+              _dropdown(
+                label: 'Lead Status',
+                value: status,
+                items: statuses,
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => status = value);
+                  }
+                },
+              ),
+
+              _dropdown(
+                label: 'Priority',
+                value: priority,
+                items: priorities,
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => priority = value);
+                  }
+                },
+              ),
+
+              _dropdown(
+                label: 'Category',
+                value: category,
+                items: categories,
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => category = value);
+                  }
+                },
+              ),
+
+              DropdownButtonFormField<String?>(
+                key: ValueKey('customer-$customerId'),
+                initialValue: customerId,
+                isExpanded: true,
+                dropdownColor: cardColor,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: 'Link Existing Customer (Optional)',
+                  labelStyle: const TextStyle(color: mutedColor),
+                  prefixIcon: const Icon(Icons.link, color: emerald),
+                  filled: true,
+                  fillColor: const Color(0xFF1A241D),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
                 ),
-                _field(
-                  emailController,
-                  'Email Address',
-                  Icons.email_outlined,
-                  keyboardType: TextInputType.emailAddress,
-                ),
-                _field(sourceController, 'Lead Source', Icons.campaign_outlined),
-                _field(notesController, 'Notes', Icons.notes_outlined, maxLines: 3),
-                _dropdown('Status', status, statuses, (value) {
-                  if (value != null) setState(() => status = value);
-                }),
-                _dropdown('Priority', priority, priorities, (value) {
-                  if (value != null) setState(() => priority = value);
-                }),
-                _dropdown('Category', category, categories, (value) {
-                  if (value != null) setState(() => category = value);
-                }),
-                DropdownButtonFormField<String?>(
-                  initialValue: customerId,
-                  isExpanded: true,
-                  dropdownColor: const Color(0xFF1A241D),
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    labelText: 'Link Existing Customer (Optional)',
-                    filled: true,
-                    fillColor: const Color(0xFF1A241D),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
+                items: [
+                  const DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('No customer linked'),
+                  ),
+                  ...widget.customers.map(
+                    (customer) => DropdownMenuItem<String?>(
+                      value: customer.id,
+                      child: Text(
+                        customer.name,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ),
-                  items: [
-                    const DropdownMenuItem<String?>(
-                      value: null,
-                      child: Text('No linked customer'),
-                    ),
-                    ...widget.customers.map((customer) {
-                      return DropdownMenuItem<String?>(
-                        value: customer.id,
-                        child: Text(
-                          customer.name,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      );
-                    }),
-                  ],
-                  onChanged: saving
-                      ? null
-                      : (value) => setState(() => customerId = value),
+                ],
+                onChanged: isSaving
+                    ? null
+                    : (value) {
+                        setState(() => customerId = value);
+                      },
+              ),
+
+              if (widget.customers.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.only(top: 10),
+                  child: Text(
+                    'No existing customers found. '
+                    'You can still add this lead.',
+                    style: TextStyle(color: mutedColor, fontSize: 12),
+                  ),
                 ),
-              ],
-            ),
+            ],
           ),
         ),
       ),
       actions: [
         TextButton(
-          onPressed: saving ? null : () => Navigator.pop(context),
+          onPressed: isSaving ? null : () => Navigator.pop(context, false),
           child: const Text('Cancel'),
         ),
-        FilledButton(
-          onPressed: saving ? null : save,
-          style: FilledButton.styleFrom(
-            backgroundColor: const Color(0xFF00C853),
+        ElevatedButton.icon(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: emerald,
             foregroundColor: Colors.black,
           ),
-          child: saving
+          onPressed: isSaving ? null : saveLead,
+          icon: isSaving
               ? const SizedBox(
-                  width: 17,
-                  height: 17,
+                  width: 16,
+                  height: 16,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
                     color: Colors.black,
                   ),
                 )
-              : Text(editing ? 'Update Lead' : 'Save Lead'),
+              : const Icon(Icons.save_outlined),
+          label: Text(isSaving ? 'Saving...' : 'Save Lead'),
         ),
       ],
     );

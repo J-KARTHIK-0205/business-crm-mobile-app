@@ -1,7 +1,9 @@
+import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
 
 class TasksScreen extends StatefulWidget {
   const TasksScreen({super.key});
@@ -11,7 +13,6 @@ class TasksScreen extends StatefulWidget {
 }
 
 class _TasksScreenState extends State<TasksScreen> {
-  final collection = FirebaseFirestore.instance.collection('tasks');
   final searchController = TextEditingController();
 
   User? get user => FirebaseAuth.instance.currentUser;
@@ -19,16 +20,333 @@ class _TasksScreenState extends State<TasksScreen> {
   String searchText = '';
   String selectedStatus = 'All';
 
+  bool isLoading = true;
+  String? loadError;
+
+  List<Map<String, dynamic>> tasks = [];
+  List<Map<String, dynamic>> customers = [];
+  List<Map<String, dynamic>> leads = [];
+  List<Map<String, dynamic>> organizations = [];
+
+  String? relationshipLoadError;
+
   static const green = Color(0xFF00C853);
   static const muted = Color(0xFF9AA69D);
   static const card = Color(0xFF121A15);
 
   final statuses = ['All', 'Pending', 'In Progress', 'Completed'];
 
+  String get baseUrl {
+    if (kIsWeb || defaultTargetPlatform == TargetPlatform.windows) {
+      return 'http://localhost/business_crm_api/api';
+    }
+
+    return 'http://10.0.2.2/business_crm_api/api';
+  }
+
+  String get apiUrl => '$baseUrl/tasks/index.php';
+  String get customersUrl => '$baseUrl/customers/index.php';
+  String get leadsUrl => '$baseUrl/leads/index.php';
+  String get organizationsUrl => '$baseUrl/organizations/index.php';
+
+  @override
+  void initState() {
+    super.initState();
+    loadTasks();
+  }
+
   @override
   void dispose() {
     searchController.dispose();
     super.dispose();
+  }
+
+  Future<Map<String, String>> getHeaders() async {
+    final current = user;
+
+    if (current == null) {
+      throw Exception('Please log in to continue.');
+    }
+
+    final token = await current.getIdToken();
+
+    if (token == null || token.isEmpty) {
+      throw Exception('Unable to get Firebase authentication token.');
+    }
+
+    return {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+  }
+
+  Map<String, dynamic> decodeResponse(http.Response response) {
+    final decoded = jsonDecode(response.body);
+
+    if (decoded is! Map<String, dynamic>) {
+      throw Exception('Invalid response from server.');
+    }
+
+    if (response.statusCode < 200 ||
+        response.statusCode >= 300 ||
+        decoded['success'] != true) {
+      throw Exception(
+        decoded['message'] ?? 'Request failed (${response.statusCode}).',
+      );
+    }
+
+    return decoded;
+  }
+
+  // Fetch customers, leads and organizations.
+  Future<List<Map<String, dynamic>>> fetchRecords(String url) async {
+    final response = await http
+        .get(Uri.parse(url), headers: await getHeaders())
+        .timeout(const Duration(seconds: 20));
+
+    final result = decodeResponse(response);
+    final data = result['data'];
+
+    if (data is! List) {
+      throw Exception('The server returned an invalid records list.');
+    }
+
+    return data
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+  }
+
+  Future<void> loadRelatedRecords() async {
+    try {
+      final results = await Future.wait([
+        fetchRecords(customersUrl),
+        fetchRecords(leadsUrl),
+        fetchRecords(organizationsUrl),
+      ]);
+
+      if (!mounted) return;
+
+      setState(() {
+        customers = results[0];
+        leads = results[1];
+        organizations = results[2];
+        relationshipLoadError = null;
+      });
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() {
+        relationshipLoadError =
+            error.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
+  // Fetch tasks from PHP API.
+  Future<void> loadTasks() async {
+    if (user == null) {
+      if (!mounted) return;
+
+      setState(() {
+        isLoading = false;
+        loadError = 'Please log in to view tasks.';
+      });
+
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        isLoading = true;
+        loadError = null;
+      });
+    }
+
+    try {
+      final response = await http
+          .get(Uri.parse(apiUrl), headers: await getHeaders())
+          .timeout(const Duration(seconds: 20));
+
+      final result = decodeResponse(response);
+      final data = result['data'];
+
+      if (data is! List) {
+        throw Exception('The server returned an invalid tasks list.');
+      }
+
+      final loadedTasks = data
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
+
+      if (!mounted) return;
+
+      setState(() {
+        tasks = loadedTasks;
+        isLoading = false;
+        loadError = null;
+      });
+
+      await loadRelatedRecords();
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() {
+        isLoading = false;
+        loadError = error.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
+  // Add or update a task.
+  Future<String?> saveTask(
+    Map<String, dynamic> task, {
+    String? id,
+  }) async {
+    try {
+      final body = {
+        'task_title': task['title'],
+        'description': task['description'],
+        'priority': task['priority'],
+        'status': task['status'],
+        'due_date': (task['dueDate'] as DateTime).toIso8601String(),
+        'customer_id': task['customerId'],
+        'lead_id': task['leadId'],
+        'organization_id': task['organizationId'],
+      };
+
+      final headers = await getHeaders();
+
+      final http.Response response;
+
+      if (id == null) {
+        response = await http
+            .post(
+              Uri.parse(apiUrl),
+              headers: headers,
+              body: jsonEncode(body),
+            )
+            .timeout(const Duration(seconds: 20));
+      } else {
+        response = await http
+            .put(
+              Uri.parse(apiUrl),
+              headers: headers,
+              body: jsonEncode({
+                ...body,
+                'id': int.parse(id),
+              }),
+            )
+            .timeout(const Duration(seconds: 20));
+      }
+
+      decodeResponse(response);
+
+      await loadTasks();
+
+      return null;
+    } catch (error) {
+      return error.toString().replaceFirst('Exception: ', '');
+    }
+  }
+
+  // Delete a task.
+  Future<void> deleteTask(String id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: card,
+        title: const Text(
+          'Delete Task?',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'Are you sure you want to delete this task?',
+          style: TextStyle(color: muted),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      final uri = Uri.parse(apiUrl).replace(
+        queryParameters: {'id': id},
+      );
+
+      final response = await http
+          .delete(uri, headers: await getHeaders())
+          .timeout(const Duration(seconds: 20));
+
+      decodeResponse(response);
+
+      await loadTasks();
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Task deleted successfully.'),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Delete failed: ${error.toString().replaceFirst('Exception: ', '')}',
+          ),
+        ),
+      );
+    }
+  }
+
+  // Open Add/Edit Task dialog.
+  Future<void> showTaskDialog({
+    String? id,
+    Map<String, dynamic>? data,
+  }) async {
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please log in to manage tasks.'),
+        ),
+      );
+      return;
+    }
+
+    if (customers.isEmpty && leads.isEmpty && organizations.isEmpty) {
+      await loadRelatedRecords();
+    }
+
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (_) => _TaskDialog(
+        id: id,
+        data: data ?? {},
+        customers: customers,
+        leads: leads,
+        organizations: organizations,
+        relationshipLoadError: relationshipLoadError,
+        onSave: (task) => saveTask(task, id: id),
+      ),
+    );
   }
 
   Color priorityColor(String priority) {
@@ -50,96 +368,6 @@ class _TasksScreenState extends State<TasksScreen> {
         return Colors.lightBlue;
       default:
         return Colors.orange;
-    }
-  }
-
-  Future<void> showTaskDialog({
-    String? id,
-    Map<String, dynamic>? data,
-  }) async {
-    final current = user;
-    if (current == null) return;
-
-    await showDialog<void>(
-      context: context,
-      builder: (_) => _TaskDialog(
-        id: id,
-        data: data ?? {},
-        onSave: (task) async {
-          try {
-            task['updatedAt'] = FieldValue.serverTimestamp();
-
-            if (id == null) {
-              task['userId'] = current.uid;
-              task['createdAt'] = FieldValue.serverTimestamp();
-              await collection.add(task);
-            } else {
-              final ref = collection.doc(id);
-              final existing = await ref.get();
-
-              if (!existing.exists ||
-                  existing.data()?['userId'] != current.uid) {
-                return 'You cannot edit this task.';
-              }
-
-              await ref.update(task);
-            }
-
-            return null;
-          } catch (error) {
-            return 'Unable to save task: $error';
-          }
-        },
-      ),
-    );
-  }
-
-  Future<void> deleteTask(String id) async {
-    final current = user;
-    if (current == null) return;
-
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: card,
-        title: const Text('Delete Task?'),
-        content: const Text('Are you sure you want to delete this task?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
-
-    try {
-      final ref = collection.doc(id);
-      final document = await ref.get();
-
-      if (!document.exists ||
-          document.data()?['userId'] != current.uid) {
-        throw Exception('You cannot delete this task.');
-      }
-
-      await ref.delete();
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Task deleted successfully.')),
-      );
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Delete failed: $error')),
-      );
     }
   }
 
@@ -167,24 +395,109 @@ class _TasksScreenState extends State<TasksScreen> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          Text(title, style: const TextStyle(color: muted, fontSize: 12)),
+          Text(
+            title,
+            style: const TextStyle(
+              color: muted,
+              fontSize: 12,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _taskCard(
-    DocumentSnapshot<Map<String, dynamic>> document,
+  Widget _tag(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 9,
+        vertical: 5,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  // Find a linked record name using its database ID.
+  String? relatedName(
+    dynamic id,
+    List<Map<String, dynamic>> records,
+    String nameKey,
   ) {
-    final data = document.data() ?? {};
-    final title = (data['title'] ?? 'Untitled Task').toString();
+    if (id == null) return null;
+
+    for (final record in records) {
+      if (record['id'].toString() == id.toString()) {
+        return record[nameKey]?.toString();
+      }
+    }
+
+    return null;
+  }
+
+  Widget _relationshipLine(IconData icon, String label) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            color: const Color(0xFF69F0AE),
+            size: 13,
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: muted,
+                fontSize: 11,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Individual task card.
+  Widget _taskCard(Map<String, dynamic> data) {
+    final id = data['id'].toString();
+    final title = (data['task_title'] ?? 'Untitled Task').toString();
     final description = (data['description'] ?? '').toString();
     final priority = (data['priority'] ?? 'Medium').toString();
     final status = (data['status'] ?? 'Pending').toString();
 
-    final dueDate = data['dueDate'] is Timestamp
-        ? (data['dueDate'] as Timestamp).toDate()
-        : null;
+    final customerName =
+        relatedName(data['customer_id'], customers, 'customer_name');
+
+    // Leads API returns lead_name using the JSON key "name".
+    final leadName =
+        relatedName(data['lead_id'], leads, 'name');
+
+    final organizationName = relatedName(
+      data['organization_id'],
+      organizations,
+      'organization_name',
+    );
+
+    DateTime? dueDate;
+    final rawDate = data['due_date'];
+
+    if (rawDate != null && rawDate.toString().isNotEmpty) {
+      dueDate = DateTime.tryParse(rawDate.toString());
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -206,7 +519,10 @@ class _TasksScreenState extends State<TasksScreen> {
               color: green.withValues(alpha: 0.13),
               borderRadius: BorderRadius.circular(13),
             ),
-            child: const Icon(Icons.task_alt, color: Color(0xFF69F0AE)),
+            child: const Icon(
+              Icons.task_alt,
+              color: Color(0xFF69F0AE),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -225,7 +541,10 @@ class _TasksScreenState extends State<TasksScreen> {
                   const SizedBox(height: 6),
                   Text(
                     description,
-                    style: const TextStyle(color: muted, fontSize: 12),
+                    style: const TextStyle(
+                      color: muted,
+                      fontSize: 12,
+                    ),
                   ),
                 ],
                 const SizedBox(height: 9),
@@ -237,6 +556,26 @@ class _TasksScreenState extends State<TasksScreen> {
                     _tag(status, statusColor(status)),
                   ],
                 ),
+                if (customerName != null ||
+                    leadName != null ||
+                    organizationName != null) ...[
+                  const SizedBox(height: 9),
+                  if (customerName != null)
+                    _relationshipLine(
+                      Icons.person_outline,
+                      customerName,
+                    ),
+                  if (leadName != null)
+                    _relationshipLine(
+                      Icons.track_changes,
+                      leadName,
+                    ),
+                  if (organizationName != null)
+                    _relationshipLine(
+                      Icons.business_outlined,
+                      organizationName,
+                    ),
+                ],
                 if (dueDate != null) ...[
                   const SizedBox(height: 8),
                   Row(
@@ -249,7 +588,10 @@ class _TasksScreenState extends State<TasksScreen> {
                       const SizedBox(width: 6),
                       Text(
                         'Due ${dueDate.day}/${dueDate.month}/${dueDate.year}',
-                        style: const TextStyle(color: muted, fontSize: 11),
+                        style: const TextStyle(
+                          color: muted,
+                          fontSize: 11,
+                        ),
                       ),
                     ],
                   ),
@@ -259,17 +601,26 @@ class _TasksScreenState extends State<TasksScreen> {
           ),
           PopupMenuButton<String>(
             color: card,
-            icon: const Icon(Icons.more_vert, color: muted),
+            icon: const Icon(
+              Icons.more_vert,
+              color: muted,
+            ),
             onSelected: (value) {
               if (value == 'edit') {
-                showTaskDialog(id: document.id, data: data);
+                showTaskDialog(id: id, data: data);
               } else if (value == 'delete') {
-                deleteTask(document.id);
+                deleteTask(id);
               }
             },
             itemBuilder: (_) => const [
-              PopupMenuItem(value: 'edit', child: Text('Edit')),
-              PopupMenuItem(value: 'delete', child: Text('Delete')),
+              PopupMenuItem(
+                value: 'edit',
+                child: Text('Edit'),
+              ),
+              PopupMenuItem(
+                value: 'delete',
+                child: Text('Delete'),
+              ),
             ],
           ),
         ],
@@ -277,197 +628,271 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
-  Widget _tag(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
+  @override
+  Widget build(BuildContext context) {
+    if (user == null) {
+      return const Center(
+        child: Text(
+          'Please log in to view tasks.',
+          style: TextStyle(color: Colors.white),
+        ),
+      );
+    }
+
+    if (isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: green),
+      );
+    }
+
+    if (loadError != null && tasks.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.error_outline,
+                color: Colors.redAccent,
+                size: 35,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                loadError!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: muted),
+              ),
+              const SizedBox(height: 15),
+              FilledButton.icon(
+                onPressed: loadTasks,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: green,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    int countStatus(String value) =>
+        tasks.where((task) => task['status'] == value).length;
+
+    final query = searchText.toLowerCase().trim();
+
+    final filtered = tasks.where((task) {
+      final title =
+          (task['task_title'] ?? '').toString().toLowerCase();
+
+      final description =
+          (task['description'] ?? '').toString().toLowerCase();
+
+      return (title.contains(query) || description.contains(query)) &&
+          (selectedStatus == 'All' ||
+              task['status'] == selectedStatus);
+    }).toList();
+
+    return RefreshIndicator(
+      color: green,
+      onRefresh: loadTasks,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(bottom: 25),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Tasks',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 25,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Create, organize and track your business tasks.',
+              style: TextStyle(
+                color: muted,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 18),
+
+            // Summary cards.
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                _summary(
+                  'Total Tasks',
+                  tasks.length,
+                  Icons.assignment_outlined,
+                ),
+                _summary(
+                  'Pending',
+                  countStatus('Pending'),
+                  Icons.pending_actions,
+                ),
+                _summary(
+                  'In Progress',
+                  countStatus('In Progress'),
+                  Icons.timelapse,
+                ),
+                _summary(
+                  'Completed',
+                  countStatus('Completed'),
+                  Icons.task_alt,
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+
+            // Search.
+            TextField(
+              controller: searchController,
+              onChanged: (value) {
+                setState(() => searchText = value);
+              },
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'Search tasks...',
+                hintStyle: const TextStyle(
+                  color: muted,
+                  fontSize: 12,
+                ),
+                prefixIcon: const Icon(
+                  Icons.search,
+                  color: green,
+                ),
+                filled: true,
+                fillColor: card,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 11),
+
+            // Add task button.
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () => showTaskDialog(),
+                icon: const Icon(Icons.add),
+                label: const Text('Add New Task'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: green,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 14),
+
+            // Status filters.
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: statuses.map((status) {
+                  final selected = selectedStatus == status;
+
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(status),
+                      selected: selected,
+                      selectedColor: green,
+                      backgroundColor: card,
+                      labelStyle: TextStyle(
+                        color: selected ? Colors.black : Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      onSelected: (_) {
+                        setState(() => selectedStatus = status);
+                      },
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+
+            const SizedBox(height: 18),
+
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'All Tasks',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Text(
+                  '${filtered.length} records',
+                  style: const TextStyle(
+                    color: muted,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 12),
+
+            if (filtered.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(35),
+                child: Center(
+                  child: Text(
+                    'No tasks found. Add a task or change your filters.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: muted),
+                  ),
+                ),
+              )
+            else
+              ...filtered.map(_taskCard),
+          ],
         ),
       ),
     );
   }
-
-  @override
-  Widget build(BuildContext context) {
-    final current = user;
-
-    if (current == null) {
-      return const Center(child: Text('Please log in to view tasks.'));
-    }
-
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: collection
-          .where('userId', isEqualTo: current.uid)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return Center(child: Text('Unable to load tasks: ${snapshot.error}'));
-        }
-
-        if (!snapshot.hasData) {
-          return const Center(
-            child: CircularProgressIndicator(color: green),
-          );
-        }
-
-        final documents = snapshot.data!.docs;
-
-        int countStatus(String value) => documents
-            .where((doc) => doc.data()['status'] == value)
-            .length;
-
-        final query = searchText.toLowerCase().trim();
-
-        final filtered = documents.where((doc) {
-          final data = doc.data();
-          final title = (data['title'] ?? '').toString().toLowerCase();
-          final description =
-              (data['description'] ?? '').toString().toLowerCase();
-
-          return (title.contains(query) || description.contains(query)) &&
-              (selectedStatus == 'All' || data['status'] == selectedStatus);
-        }).toList();
-
-        return SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: 25),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Tasks',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 25,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'Create, organize and track your business tasks.',
-                style: TextStyle(color: muted, fontSize: 13),
-              ),
-              const SizedBox(height: 18),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  _summary('Total Tasks', documents.length, Icons.assignment_outlined),
-                  _summary('Pending', countStatus('Pending'), Icons.pending_actions),
-                  _summary('In Progress', countStatus('In Progress'), Icons.timelapse),
-                  _summary('Completed', countStatus('Completed'), Icons.task_alt),
-                ],
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: searchController,
-                onChanged: (value) => setState(() => searchText = value),
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Search tasks...',
-                  hintStyle: const TextStyle(color: muted, fontSize: 12),
-                  prefixIcon: const Icon(Icons.search, color: green),
-                  filled: true,
-                  fillColor: card,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 11),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: () => showTaskDialog(),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add New Task'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: green,
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: statuses.map((status) {
-                    final selected = selectedStatus == status;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(
-                        label: Text(status),
-                        selected: selected,
-                        selectedColor: green,
-                        backgroundColor: card,
-                        labelStyle: TextStyle(
-                          color: selected ? Colors.black : Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        onSelected: (_) {
-                          setState(() => selectedStatus = status);
-                        },
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'All Tasks',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  Text('${filtered.length} records',
-                      style: const TextStyle(color: muted, fontSize: 12)),
-                ],
-              ),
-              const SizedBox(height: 12),
-              if (filtered.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(35),
-                  child: Center(
-                    child: Text(
-                      'No tasks found. Add a task or change your filters.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: muted),
-                    ),
-                  ),
-                )
-              else
-                ...filtered.map(_taskCard),
-            ],
-          ),
-        );
-      },
-    );
-  }
 }
+
+// -----------------------------------------------------------------------------
+// ADD / EDIT TASK DIALOG
+// -----------------------------------------------------------------------------
 
 class _TaskDialog extends StatefulWidget {
   final String? id;
   final Map<String, dynamic> data;
+
+  final List<Map<String, dynamic>> customers;
+  final List<Map<String, dynamic>> leads;
+  final List<Map<String, dynamic>> organizations;
+
+  final String? relationshipLoadError;
+
   final Future<String?> Function(Map<String, dynamic>) onSave;
 
   const _TaskDialog({
     required this.id,
     required this.data,
+    required this.customers,
+    required this.leads,
+    required this.organizations,
+    required this.relationshipLoadError,
     required this.onSave,
   });
 
@@ -485,6 +910,10 @@ class _TaskDialogState extends State<_TaskDialog> {
   late String status;
   late DateTime dueDate;
 
+  int? customerId;
+  int? leadId;
+  int? organizationId;
+
   bool saving = false;
 
   final priorities = ['Low', 'Medium', 'High'];
@@ -492,28 +921,72 @@ class _TaskDialogState extends State<_TaskDialog> {
 
   static const green = Color(0xFF00C853);
 
+  int? _parseId(dynamic value) {
+    if (value == null) return null;
+    return int.tryParse(value.toString());
+  }
+
+  int? _validInitialId(
+    dynamic value,
+    List<Map<String, dynamic>> records,
+  ) {
+    final parsed = _parseId(value);
+
+    if (parsed == null) return null;
+
+    for (final record in records) {
+      if (_parseId(record['id']) == parsed) {
+        return parsed;
+      }
+    }
+
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
 
     titleController = TextEditingController(
-      text: widget.data['title'] ?? '',
-    );
-    descriptionController = TextEditingController(
-      text: widget.data['description'] ?? '',
+      text: widget.data['task_title']?.toString() ?? '',
     );
 
-    priority = priorities.contains(widget.data['priority'])
-        ? widget.data['priority']
+    descriptionController = TextEditingController(
+      text: widget.data['description']?.toString() ?? '',
+    );
+
+    final savedPriority = widget.data['priority']?.toString();
+
+    priority = priorities.contains(savedPriority)
+        ? savedPriority!
         : 'Medium';
 
-    status = statuses.contains(widget.data['status'])
-        ? widget.data['status']
+    final savedStatus = widget.data['status']?.toString();
+
+    status = statuses.contains(savedStatus)
+        ? savedStatus!
         : 'Pending';
 
-    dueDate = widget.data['dueDate'] is Timestamp
-        ? (widget.data['dueDate'] as Timestamp).toDate()
+    final savedDate = widget.data['due_date']?.toString();
+
+    dueDate = savedDate != null
+        ? (DateTime.tryParse(savedDate) ?? DateTime.now())
         : DateTime.now();
+
+    customerId = _validInitialId(
+      widget.data['customer_id'],
+      widget.customers,
+    );
+
+    leadId = _validInitialId(
+      widget.data['lead_id'],
+      widget.leads,
+    );
+
+    organizationId = _validInitialId(
+      widget.data['organization_id'],
+      widget.organizations,
+    );
   }
 
   @override
@@ -546,7 +1019,10 @@ class _TaskDialogState extends State<_TaskDialog> {
       'description': descriptionController.text.trim(),
       'priority': priority,
       'status': status,
-      'dueDate': Timestamp.fromDate(dueDate),
+      'dueDate': dueDate,
+      'customerId': customerId,
+      'leadId': leadId,
+      'organizationId': organizationId,
     });
 
     if (!mounted) return;
@@ -555,6 +1031,7 @@ class _TaskDialogState extends State<_TaskDialog> {
       Navigator.pop(context);
     } else {
       setState(() => saving = false);
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(error)),
       );
@@ -583,8 +1060,59 @@ class _TaskDialogState extends State<_TaskDialog> {
           ),
         ),
         items: options.map((option) {
-          return DropdownMenuItem(value: option, child: Text(option));
+          return DropdownMenuItem(
+            value: option,
+            child: Text(option),
+          );
         }).toList(),
+        onChanged: saving ? null : onChanged,
+      ),
+    );
+  }
+
+  // Customer / Lead / Organization dropdown.
+  Widget relatedDropdown({
+    required String label,
+    required int? value,
+    required List<Map<String, dynamic>> records,
+    required String nameKey,
+    required ValueChanged<int?> onChanged,
+  }) {
+    final items = <DropdownMenuItem<int?>>[
+      const DropdownMenuItem<int?>(
+        value: null,
+        child: Text('None'),
+      ),
+      ...records.map((record) {
+        final recordId = int.tryParse(record['id'].toString());
+
+        return DropdownMenuItem<int?>(
+          value: recordId,
+          child: Text(
+            (record[nameKey] ?? 'Unnamed').toString(),
+            overflow: TextOverflow.ellipsis,
+          ),
+        );
+      }).where((item) => item.value != null),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 13),
+      child: DropdownButtonFormField<int?>(
+        initialValue: value,
+        isExpanded: true,
+        dropdownColor: const Color(0xFF1A241D),
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          labelText: label,
+          filled: true,
+          fillColor: const Color(0xFF1A241D),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+        ),
+        items: items,
         onChanged: saving ? null : onChanged,
       ),
     );
@@ -610,11 +1138,13 @@ class _TaskDialogState extends State<_TaskDialog> {
               children: [
                 TextFormField(
                   controller: titleController,
+                  maxLength: 150,
                   style: const TextStyle(color: Colors.white),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
                       return 'Task title is required.';
                     }
+
                     return null;
                   },
                   decoration: const InputDecoration(
@@ -622,7 +1152,9 @@ class _TaskDialogState extends State<_TaskDialog> {
                     prefixIcon: Icon(Icons.assignment_outlined),
                   ),
                 ),
+
                 const SizedBox(height: 13),
+
                 TextFormField(
                   controller: descriptionController,
                   maxLines: 3,
@@ -632,23 +1164,94 @@ class _TaskDialogState extends State<_TaskDialog> {
                     prefixIcon: Icon(Icons.notes_outlined),
                   ),
                 ),
+
                 const SizedBox(height: 13),
+
                 dropdown('Priority', priority, priorities, (value) {
-                  if (value != null) setState(() => priority = value);
+                  if (value != null) {
+                    setState(() => priority = value);
+                  }
                 }),
+
                 dropdown('Status', status, statuses, (value) {
-                  if (value != null) setState(() => status = value);
+                  if (value != null) {
+                    setState(() => status = value);
+                  }
                 }),
+
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: EdgeInsets.only(bottom: 9),
+                    child: Text(
+                      'Link this task (optional)',
+                      style: TextStyle(
+                        color: Color(0xFF69F0AE),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+
+                relatedDropdown(
+                  label: 'Customer',
+                  value: customerId,
+                  records: widget.customers,
+                  nameKey: 'customer_name',
+                  onChanged: (value) {
+                    setState(() => customerId = value);
+                  },
+                ),
+
+                relatedDropdown(
+                  label: 'Lead',
+                  value: leadId,
+                  records: widget.leads,
+                  // Leads API uses "name" for lead_name.
+                  nameKey: 'name',
+                  onChanged: (value) {
+                    setState(() => leadId = value);
+                  },
+                ),
+
+                relatedDropdown(
+                  label: 'Organization',
+                  value: organizationId,
+                  records: widget.organizations,
+                  nameKey: 'organization_name',
+                  onChanged: (value) {
+                    setState(() => organizationId = value);
+                  },
+                ),
+
+                if (widget.relationshipLoadError != null)
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 10),
+                    child: Text(
+                      'Some linked-record lists could not be loaded. '
+                      'You can still save this task without linking records.',
+                      style: TextStyle(
+                        color: Colors.orange,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.calendar_month, color: green),
+                  leading: const Icon(
+                    Icons.calendar_month,
+                    color: green,
+                  ),
                   title: const Text(
                     'Due Date',
                     style: TextStyle(color: Colors.white),
                   ),
                   subtitle: Text(
                     '${dueDate.day}/${dueDate.month}/${dueDate.year}',
-                    style: const TextStyle(color: Color(0xFF9AA69D)),
+                    style: const TextStyle(
+                      color: Color(0xFF9AA69D),
+                    ),
                   ),
                   trailing: TextButton(
                     onPressed: saving ? null : chooseDate,

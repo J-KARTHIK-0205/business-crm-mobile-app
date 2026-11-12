@@ -46,3 +46,6 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+flutter_crash_log.txt
+flutter_error_log.txt

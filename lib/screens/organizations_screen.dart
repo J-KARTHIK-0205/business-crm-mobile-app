@@ -1,7 +1,9 @@
+import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
 
 class OrganizationsScreen extends StatefulWidget {
   const OrganizationsScreen({super.key});
@@ -11,13 +13,7 @@ class OrganizationsScreen extends StatefulWidget {
 }
 
 class _OrganizationsScreenState extends State<OrganizationsScreen> {
-  final collection = FirebaseFirestore.instance.collection('organizations');
   final searchController = TextEditingController();
-
-  String searchQuery = '';
-  String selectedType = 'All';
-
-  User? get user => FirebaseAuth.instance.currentUser;
 
   static const green = Color(0xFF00C853);
   static const muted = Color(0xFF9AA69D);
@@ -25,65 +21,237 @@ class _OrganizationsScreenState extends State<OrganizationsScreen> {
 
   final types = ['All', 'Company', 'College', 'Sponsor'];
 
+  List<Map<String, dynamic>> organizations = [];
+  bool isLoading = true;
+  String? loadError;
+  String searchQuery = '';
+  String selectedType = 'All';
+
+  User? get user => FirebaseAuth.instance.currentUser;
+
+  String get apiUrl {
+    if (kIsWeb || defaultTargetPlatform == TargetPlatform.windows) {
+      return 'http://localhost/business_crm_api/api/organizations/index.php';
+    }
+
+    return 'http://10.0.2.2/business_crm_api/api/organizations/index.php';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    loadOrganizations();
+  }
+
   @override
   void dispose() {
     searchController.dispose();
     super.dispose();
   }
 
+  Future<Map<String, String>> getHeaders() async {
+    final current = user;
+
+    if (current == null) {
+      throw Exception('Please log in to continue.');
+    }
+
+    final token = await current.getIdToken();
+
+    if (token == null || token.isEmpty) {
+      throw Exception('Unable to get Firebase authentication token.');
+    }
+
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+  }
+
+  Map<String, dynamic> decodeResponse(http.Response response) {
+    final dynamic decoded;
+
+    try {
+      decoded = jsonDecode(response.body);
+    } catch (_) {
+      throw Exception('Invalid response from server.');
+    }
+
+    if (decoded is! Map<String, dynamic>) {
+      throw Exception('Unexpected server response.');
+    }
+
+    if (response.statusCode < 200 ||
+        response.statusCode >= 300 ||
+        decoded['success'] != true) {
+      throw Exception(
+        decoded['message']?.toString() ?? 'Request failed.',
+      );
+    }
+
+    return decoded;
+  }
+
+  Map<String, dynamic> mapOrganization(Map<String, dynamic> row) {
+    return {
+      'id': int.parse(row['id'].toString()),
+      'name': row['organization_name'] ?? '',
+      'type': row['organization_type'] ?? 'Company',
+      'industry': row['industry'] ?? '',
+      'website': row['website'] ?? '',
+      'email': row['email'] ?? '',
+      'phone': row['phone'] ?? '',
+      'address': row['address'] ?? '',
+      'contactPerson': row['contact_person'] ?? '',
+      'notes': row['notes'] ?? '',
+    };
+  }
+
+  Map<String, dynamic> toApiData(Map<String, dynamic> data) {
+    return {
+      'organization_name': data['name'] ?? '',
+      'organization_type': data['type'] ?? 'Company',
+      'industry': data['industry'] ?? '',
+      'website': data['website'] ?? '',
+      'email': data['email'] ?? '',
+      'phone': data['phone'] ?? '',
+      'address': data['address'] ?? '',
+      'contact_person': data['contactPerson'] ?? '',
+      'notes': data['notes'] ?? '',
+    };
+  }
+
+  Future<void> loadOrganizations() async {
+    if (user == null) {
+      if (!mounted) return;
+      setState(() {
+        isLoading = false;
+        loadError = 'Please log in to continue.';
+      });
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        isLoading = true;
+        loadError = null;
+      });
+    }
+
+    try {
+      final headers = await getHeaders();
+      final response = await http
+          .get(Uri.parse(apiUrl), headers: headers)
+          .timeout(const Duration(seconds: 20));
+
+      final result = decodeResponse(response);
+      final rows = result['data'];
+
+      if (rows is! List) {
+        throw Exception('Organization data was not returned correctly.');
+      }
+
+      final loaded = rows
+          .whereType<Map>()
+          .map((row) => mapOrganization(
+                Map<String, dynamic>.from(row),
+              ))
+          .toList();
+
+      if (!mounted) return;
+
+      setState(() {
+        organizations = loaded;
+        isLoading = false;
+        loadError = null;
+      });
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() {
+        isLoading = false;
+        loadError = error.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
+  Future<String?> saveOrganization(
+    Map<String, dynamic> organization, {
+    int? id,
+  }) async {
+    try {
+      final headers = await getHeaders();
+      final apiData = toApiData(organization);
+
+      final http.Response response;
+
+      if (id == null) {
+        response = await http
+            .post(
+              Uri.parse(apiUrl),
+              headers: headers,
+              body: jsonEncode(apiData),
+            )
+            .timeout(const Duration(seconds: 20));
+      } else {
+        apiData['id'] = id;
+
+        response = await http
+            .put(
+              Uri.parse(apiUrl),
+              headers: headers,
+              body: jsonEncode(apiData),
+            )
+            .timeout(const Duration(seconds: 20));
+      }
+
+      decodeResponse(response);
+
+      await loadOrganizations();
+
+      if (loadError != null) {
+        return 'Saved successfully, but the list could not refresh: $loadError';
+      }
+
+      return null;
+    } catch (error) {
+      return error.toString().replaceFirst('Exception: ', '');
+    }
+  }
+
   Future<void> showOrganizationDialog({
-    String? id,
+    int? id,
     Map<String, dynamic>? data,
   }) async {
-    final current = user;
-    if (current == null) return;
+    if (user == null) {
+      showMessage('Please log in to continue.');
+      return;
+    }
 
     await showDialog<void>(
       context: context,
       builder: (_) => _OrganizationDialog(
         data: data ?? {},
-        onSave: (organization) async {
-          try {
-            organization['userId'] = current.uid;
-            organization['updatedAt'] = FieldValue.serverTimestamp();
-
-            if (id == null) {
-              organization['createdAt'] = FieldValue.serverTimestamp();
-              await collection.add(organization);
-            } else {
-              final ref = collection.doc(id);
-              final existing = await ref.get();
-
-              if (!existing.exists ||
-                  existing.data()?['userId'] != current.uid) {
-                return 'You cannot edit this organization.';
-              }
-
-              await ref.update(organization);
-            }
-
-            return null;
-          } catch (error) {
-            return 'Unable to save organization: $error';
-          }
+        onSave: (organization) {
+          return saveOrganization(organization, id: id);
         },
       ),
     );
   }
 
-  Future<void> deleteOrganization(
-    String id,
-    String name,
-  ) async {
-    final current = user;
-    if (current == null) return;
-
+  Future<void> deleteOrganization(int id, String name) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: card,
-        title: const Text('Delete Organization?'),
-        content: Text('Delete $name? This cannot be undone.'),
+        title: const Text(
+          'Delete Organization?',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          'Delete $name? This cannot be undone.',
+          style: const TextStyle(color: muted),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
@@ -103,26 +271,41 @@ class _OrganizationsScreenState extends State<OrganizationsScreen> {
     if (confirmed != true) return;
 
     try {
-      final ref = collection.doc(id);
-      final document = await ref.get();
+      final headers = await getHeaders();
 
-      if (!document.exists ||
-          document.data()?['userId'] != current.uid) {
-        throw Exception('You cannot delete this organization.');
-      }
+      final response = await http
+          .delete(
+            Uri.parse('$apiUrl?id=$id'),
+            headers: headers,
+          )
+          .timeout(const Duration(seconds: 20));
 
-      await ref.delete();
+      decodeResponse(response);
+
+      await loadOrganizations();
 
       if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Organization deleted.')),
+        const SnackBar(
+          content: Text('Organization deleted successfully.'),
+        ),
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Delete failed: $error')),
+
+      showMessage(
+        'Delete failed: ${error.toString().replaceFirst('Exception: ', '')}',
       );
     }
+  }
+
+  void showMessage(String message) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   IconData typeIcon(String type) {
@@ -136,10 +319,21 @@ class _OrganizationsScreenState extends State<OrganizationsScreen> {
     }
   }
 
-  Widget organizationCard(
-    String id,
-    Map<String, dynamic> data,
-  ) {
+  List<Map<String, dynamic>> get filteredOrganizations {
+    final query = searchQuery.toLowerCase();
+
+    return organizations.where((data) {
+      final name = (data['name'] ?? '').toString().toLowerCase();
+      final industry = (data['industry'] ?? '').toString().toLowerCase();
+      final type = (data['type'] ?? 'Company').toString();
+
+      return (name.contains(query) || industry.contains(query)) &&
+          (selectedType == 'All' || selectedType == type);
+    }).toList();
+  }
+
+  Widget organizationCard(Map<String, dynamic> data) {
+    final id = int.parse(data['id'].toString());
     final name = (data['name'] ?? 'Unnamed Organization').toString();
     final type = (data['type'] ?? 'Company').toString();
 
@@ -163,7 +357,10 @@ class _OrganizationsScreenState extends State<OrganizationsScreen> {
               color: green.withValues(alpha: 0.13),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(typeIcon(type), color: const Color(0xFF69F0AE)),
+            child: Icon(
+              typeIcon(type),
+              color: const Color(0xFF69F0AE),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -181,13 +378,25 @@ class _OrganizationsScreenState extends State<OrganizationsScreen> {
                 const SizedBox(height: 6),
                 _tag(type),
                 if ((data['industry'] ?? '').toString().isNotEmpty)
-                  _info(Icons.category_outlined, data['industry'].toString()),
+                  _info(
+                    Icons.category_outlined,
+                    data['industry'].toString(),
+                  ),
                 if ((data['contactPerson'] ?? '').toString().isNotEmpty)
-                  _info(Icons.person_outline, data['contactPerson'].toString()),
+                  _info(
+                    Icons.person_outline,
+                    data['contactPerson'].toString(),
+                  ),
                 if ((data['phone'] ?? '').toString().isNotEmpty)
-                  _info(Icons.phone_outlined, data['phone'].toString()),
+                  _info(
+                    Icons.phone_outlined,
+                    data['phone'].toString(),
+                  ),
                 if ((data['email'] ?? '').toString().isNotEmpty)
-                  _info(Icons.email_outlined, data['email'].toString()),
+                  _info(
+                    Icons.email_outlined,
+                    data['email'].toString(),
+                  ),
               ],
             ),
           ),
@@ -202,8 +411,14 @@ class _OrganizationsScreenState extends State<OrganizationsScreen> {
               }
             },
             itemBuilder: (_) => const [
-              PopupMenuItem(value: 'edit', child: Text('Edit')),
-              PopupMenuItem(value: 'delete', child: Text('Delete')),
+              PopupMenuItem(
+                value: 'edit',
+                child: Text('Edit'),
+              ),
+              PopupMenuItem(
+                value: 'delete',
+                child: Text('Delete'),
+              ),
             ],
           ),
         ],
@@ -249,176 +464,6 @@ class _OrganizationsScreenState extends State<OrganizationsScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final current = user;
-
-    if (current == null) {
-      return const Center(child: Text('Please log in to continue.'));
-    }
-
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: collection
-          .where('userId', isEqualTo: current.uid)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return Center(
-            child: Text('Unable to load organizations: ${snapshot.error}'),
-          );
-        }
-
-        if (!snapshot.hasData) {
-          return const Center(
-            child: CircularProgressIndicator(color: green),
-          );
-        }
-
-        final all = snapshot.data!.docs;
-        final query = searchQuery.toLowerCase();
-
-        final filtered = all.where((doc) {
-          final data = doc.data();
-          final name = (data['name'] ?? '').toString().toLowerCase();
-          final industry = (data['industry'] ?? '').toString().toLowerCase();
-          final type = (data['type'] ?? 'Company').toString();
-
-          return (name.contains(query) || industry.contains(query)) &&
-              (selectedType == 'All' || selectedType == type);
-        }).toList();
-
-        return SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: 25),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Organizations',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 25,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'Manage companies, colleges and sponsors.',
-                style: TextStyle(color: muted, fontSize: 13),
-              ),
-              const SizedBox(height: 18),
-              Row(
-                children: [
-                  _summary('Total', all.length),
-                  const SizedBox(width: 10),
-                  _summary('Companies', all.where(
-                    (d) => d.data()['type'] == 'Company',
-                  ).length),
-                  const SizedBox(width: 10),
-                  _summary('Colleges', all.where(
-                    (d) => d.data()['type'] == 'College',
-                  ).length),
-                ],
-              ),
-              const SizedBox(height: 18),
-              TextField(
-                controller: searchController,
-                onChanged: (value) => setState(() => searchQuery = value.trim()),
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Search organizations...',
-                  hintStyle: const TextStyle(color: muted, fontSize: 12),
-                  prefixIcon: const Icon(Icons.search, color: green),
-                  suffixIcon: searchQuery.isEmpty
-                      ? null
-                      : IconButton(
-                          onPressed: () {
-                            searchController.clear();
-                            setState(() => searchQuery = '');
-                          },
-                          icon: const Icon(Icons.close, color: muted),
-                        ),
-                  filled: true,
-                  fillColor: card,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: selectedType,
-                dropdownColor: card,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  labelText: 'Organization type',
-                  labelStyle: const TextStyle(color: muted),
-                  filled: true,
-                  fillColor: card,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(13),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-                items: types.map((type) {
-                  return DropdownMenuItem(value: type, child: Text(type));
-                }).toList(),
-                onChanged: (value) {
-                  if (value != null) setState(() => selectedType = value);
-                },
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: () => showOrganizationDialog(),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add Organization'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: green,
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 22),
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'All Organizations',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  Text('${filtered.length} records',
-                      style: const TextStyle(color: muted, fontSize: 12)),
-                ],
-              ),
-              const SizedBox(height: 12),
-              if (filtered.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(35),
-                  child: Center(
-                    child: Text(
-                      'No organizations found. Add one to get started.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: muted),
-                    ),
-                  ),
-                )
-              else
-                ...filtered.map((doc) => organizationCard(doc.id, doc.data())),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   Widget _summary(String label, int count) {
     return Expanded(
       child: Container(
@@ -438,7 +483,219 @@ class _OrganizationsScreenState extends State<OrganizationsScreen> {
                 fontSize: 21,
               ),
             ),
-            Text(label, style: const TextStyle(color: muted, fontSize: 11)),
+            Text(
+              label,
+              style: const TextStyle(color: muted, fontSize: 11),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (user == null) {
+      return const Center(
+        child: Text(
+          'Please log in to continue.',
+          style: TextStyle(color: muted),
+        ),
+      );
+    }
+
+    if (isLoading && organizations.isEmpty) {
+      return const Center(
+        child: CircularProgressIndicator(color: green),
+      );
+    }
+
+    if (loadError != null && organizations.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.cloud_off_outlined,
+                color: muted,
+                size: 42,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                loadError!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: muted),
+              ),
+              const SizedBox(height: 15),
+              FilledButton.icon(
+                onPressed: loadOrganizations,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Try Again'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: green,
+                  foregroundColor: Colors.black,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final filtered = filteredOrganizations;
+
+    final companyCount = organizations
+        .where((item) => item['type'] == 'Company')
+        .length;
+
+    final collegeCount = organizations
+        .where((item) => item['type'] == 'College')
+        .length;
+
+    return RefreshIndicator(
+      color: green,
+      onRefresh: loadOrganizations,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(bottom: 25),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Organizations',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 25,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Manage companies, colleges and sponsors.',
+              style: TextStyle(color: muted, fontSize: 13),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                _summary('Total', organizations.length),
+                const SizedBox(width: 10),
+                _summary('Companies', companyCount),
+                const SizedBox(width: 10),
+                _summary('Colleges', collegeCount),
+              ],
+            ),
+            const SizedBox(height: 18),
+            TextField(
+              controller: searchController,
+              onChanged: (value) {
+                setState(() => searchQuery = value.trim());
+              },
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'Search organizations...',
+                hintStyle: const TextStyle(color: muted, fontSize: 12),
+                prefixIcon: const Icon(Icons.search, color: green),
+                suffixIcon: searchQuery.isEmpty
+                    ? null
+                    : IconButton(
+                        onPressed: () {
+                          searchController.clear();
+                          setState(() => searchQuery = '');
+                        },
+                        icon: const Icon(Icons.close, color: muted),
+                      ),
+                filled: true,
+                fillColor: card,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: selectedType,
+              dropdownColor: card,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'Organization type',
+                labelStyle: const TextStyle(color: muted),
+                filled: true,
+                fillColor: card,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(13),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+              items: types.map((type) {
+                return DropdownMenuItem(
+                  value: type,
+                  child: Text(type),
+                );
+              }).toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() => selectedType = value);
+                }
+              },
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () => showOrganizationDialog(),
+                icon: const Icon(Icons.add),
+                label: const Text('Add Organization'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: green,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+              ),
+            ),
+            const SizedBox(height: 22),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'All Organizations',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Text(
+                  '${filtered.length} records',
+                  style: const TextStyle(color: muted, fontSize: 12),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (loadError != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Text(
+                  'Refresh failed: $loadError',
+                  style: const TextStyle(color: Colors.orangeAccent),
+                ),
+              ),
+            if (filtered.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(35),
+                child: Center(
+                  child: Text(
+                    'No organizations found. Add one to get started.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: muted),
+                  ),
+                ),
+              )
+            else
+              ...filtered.map(organizationCard),
           ],
         ),
       ),
@@ -479,19 +736,39 @@ class _OrganizationDialogState extends State<_OrganizationDialog> {
   @override
   void initState() {
     super.initState();
+
     final data = widget.data;
 
-    nameController = TextEditingController(text: data['name'] ?? '');
-    industryController = TextEditingController(text: data['industry'] ?? '');
-    websiteController = TextEditingController(text: data['website'] ?? '');
-    emailController = TextEditingController(text: data['email'] ?? '');
-    phoneController = TextEditingController(text: data['phone'] ?? '');
-    addressController = TextEditingController(text: data['address'] ?? '');
-    contactController = TextEditingController(text: data['contactPerson'] ?? '');
-    notesController = TextEditingController(text: data['notes'] ?? '');
+    nameController = TextEditingController(
+      text: data['name']?.toString() ?? '',
+    );
+    industryController = TextEditingController(
+      text: data['industry']?.toString() ?? '',
+    );
+    websiteController = TextEditingController(
+      text: data['website']?.toString() ?? '',
+    );
+    emailController = TextEditingController(
+      text: data['email']?.toString() ?? '',
+    );
+    phoneController = TextEditingController(
+      text: data['phone']?.toString() ?? '',
+    );
+    addressController = TextEditingController(
+      text: data['address']?.toString() ?? '',
+    );
+    contactController = TextEditingController(
+      text: data['contactPerson']?.toString() ?? '',
+    );
+    notesController = TextEditingController(
+      text: data['notes']?.toString() ?? '',
+    );
 
     const allowed = ['Company', 'College', 'Sponsor'];
-    selectedType = allowed.contains(data['type']) ? data['type'] : 'Company';
+
+    selectedType = allowed.contains(data['type'])
+        ? data['type'].toString()
+        : 'Company';
   }
 
   @override
@@ -512,26 +789,37 @@ class _OrganizationDialogState extends State<_OrganizationDialog> {
 
     setState(() => saving = true);
 
-    final error = await widget.onSave({
-      'name': nameController.text.trim(),
-      'type': selectedType,
-      'industry': industryController.text.trim(),
-      'website': websiteController.text.trim(),
-      'email': emailController.text.trim(),
-      'phone': phoneController.text.trim(),
-      'address': addressController.text.trim(),
-      'contactPerson': contactController.text.trim(),
-      'notes': notesController.text.trim(),
-    });
+    try {
+      final error = await widget.onSave({
+        'name': nameController.text.trim(),
+        'type': selectedType,
+        'industry': industryController.text.trim(),
+        'website': websiteController.text.trim(),
+        'email': emailController.text.trim(),
+        'phone': phoneController.text.trim(),
+        'address': addressController.text.trim(),
+        'contactPerson': contactController.text.trim(),
+        'notes': notesController.text.trim(),
+      });
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    if (error == null) {
-      Navigator.pop(context);
-    } else {
+      if (error == null) {
+        Navigator.pop(context);
+      } else {
+        setState(() => saving = false);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error)),
+        );
+      }
+    } catch (error) {
+      if (!mounted) return;
+
       setState(() => saving = false);
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error)),
+        SnackBar(content: Text('Unable to save: $error')),
       );
     }
   }
@@ -606,7 +894,10 @@ class _OrganizationDialogState extends State<_OrganizationDialog> {
                     border: OutlineInputBorder(),
                   ),
                   items: const ['Company', 'College', 'Sponsor'].map((type) {
-                    return DropdownMenuItem(value: type, child: Text(type));
+                    return DropdownMenuItem(
+                      value: type,
+                      child: Text(type),
+                    );
                   }).toList(),
                   onChanged: saving
                       ? null
@@ -617,8 +908,16 @@ class _OrganizationDialogState extends State<_OrganizationDialog> {
                         },
                 ),
                 const SizedBox(height: 12),
-                field(industryController, 'Industry', Icons.category_outlined),
-                field(websiteController, 'Website', Icons.language_outlined),
+                field(
+                  industryController,
+                  'Industry',
+                  Icons.category_outlined,
+                ),
+                field(
+                  websiteController,
+                  'Website',
+                  Icons.language_outlined,
+                ),
                 field(
                   emailController,
                   'Email',
@@ -626,10 +925,13 @@ class _OrganizationDialogState extends State<_OrganizationDialog> {
                   keyboardType: TextInputType.emailAddress,
                   validator: (value) {
                     final email = value?.trim() ?? '';
+
                     if (email.isNotEmpty &&
-                        !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+                        !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+                            .hasMatch(email)) {
                       return 'Enter a valid email address.';
                     }
+
                     return null;
                   },
                 ),
@@ -639,9 +941,22 @@ class _OrganizationDialogState extends State<_OrganizationDialog> {
                   Icons.phone_outlined,
                   keyboardType: TextInputType.phone,
                 ),
-                field(addressController, 'Address', Icons.location_on_outlined),
-                field(contactController, 'Contact Person', Icons.person_outline),
-                field(notesController, 'Notes', Icons.notes_outlined, maxLines: 3),
+                field(
+                  addressController,
+                  'Address',
+                  Icons.location_on_outlined,
+                ),
+                field(
+                  contactController,
+                  'Contact Person',
+                  Icons.person_outline,
+                ),
+                field(
+                  notesController,
+                  'Notes',
+                  Icons.notes_outlined,
+                  maxLines: 3,
+                ),
               ],
             ),
           ),
