@@ -49,3 +49,24 @@ app.*.map.json
 
 flutter_crash_log.txt
 flutter_error_log.txt
+# Environment and secret files
+.env
+.env.*
+!.env.example
+
+# Firebase service account credentials
+firebase-service-account.json
+**/firebase-service-account.json
+
+# Local database configuration
+database.local.php
+**/database.local.php
+
+# Private keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Local configuration files
+config.local.php

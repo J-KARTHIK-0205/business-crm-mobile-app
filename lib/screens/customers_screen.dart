@@ -67,11 +67,13 @@ class CustomersScreen extends StatefulWidget {
 class _CustomersScreenState extends State<CustomersScreen> {
   final TextEditingController searchController = TextEditingController();
 
-  static const Color backgroundColor = Color(0xFF080C09);
-  static const Color cardColor = Color(0xFF121A15);
   static const Color emerald = Color(0xFF00C853);
-  static const Color emeraldLight = Color(0xFF69F0AE);
-  static const Color mutedColor = Color(0xFF9AA69D);
+
+  Color get cardColor => Theme.of(context).colorScheme.surfaceContainerHighest;
+  Color get textColor => Theme.of(context).colorScheme.onSurface;
+  Color get mutedColor => Theme.of(context).colorScheme.onSurfaceVariant;
+  Color get emeraldLight => Theme.of(context).colorScheme.primary;
+  Color get borderColor => Theme.of(context).colorScheme.outlineVariant;
 
   String searchText = '';
   List<Customer> customers = [];
@@ -240,7 +242,9 @@ class _CustomersScreenState extends State<CustomersScreen> {
     await loadCustomers();
 
     if (loadError != null) {
-      throw Exception('Customer saved, but refreshing the list failed: $loadError');
+      throw Exception(
+        'Customer saved, but refreshing the list failed: $loadError',
+      );
     }
   }
 
@@ -270,7 +274,9 @@ class _CustomersScreenState extends State<CustomersScreen> {
     await loadCustomers();
 
     if (loadError != null) {
-      throw Exception('Customer updated, but refreshing the list failed: $loadError');
+      throw Exception(
+        'Customer updated, but refreshing the list failed: $loadError',
+      );
     }
   }
 
@@ -316,15 +322,17 @@ class _CustomersScreenState extends State<CustomersScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
+        final colors = Theme.of(dialogContext).colorScheme;
+
         return AlertDialog(
-          backgroundColor: cardColor,
-          title: const Text(
+          backgroundColor: colors.surface,
+          title: Text(
             'Delete Customer?',
-            style: TextStyle(color: Colors.white),
+            style: TextStyle(color: colors.onSurface),
           ),
           content: Text(
             'Are you sure you want to delete ${customer.name}?',
-            style: const TextStyle(color: mutedColor),
+            style: TextStyle(color: colors.onSurfaceVariant),
           ),
           actions: [
             TextButton(
@@ -393,7 +401,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
         color: cardColor,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.06),
+          color: borderColor.withValues(alpha: 0.65),
         ),
       ),
       child: Row(
@@ -414,15 +422,15 @@ class _CustomersScreenState extends State<CustomersScreen> {
               children: [
                 Text(
                   value,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: textColor,
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: mutedColor,
                     fontSize: 12,
                   ),
@@ -449,7 +457,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               color: mutedColor,
               fontSize: 12,
             ),
@@ -474,7 +482,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
         color: cardColor,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.06),
+          color: borderColor.withValues(alpha: 0.65),
         ),
       ),
       child: Padding(
@@ -492,7 +500,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
               child: Center(
                 child: Text(
                   initial,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: emeraldLight,
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -509,8 +517,8 @@ class _CustomersScreenState extends State<CustomersScreen> {
                     customer.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: textColor,
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
                     ),
@@ -531,7 +539,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
               ),
             ),
             PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert, color: mutedColor),
+              icon: Icon(Icons.more_vert, color: mutedColor),
               color: cardColor,
               onSelected: (value) {
                 if (value == 'edit') {
@@ -592,7 +600,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                 color: emerald.withValues(alpha: 0.10),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.people_outline,
                 color: emeraldLight,
                 size: 38,
@@ -601,8 +609,8 @@ class _CustomersScreenState extends State<CustomersScreen> {
             const SizedBox(height: 15),
             Text(
               title,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: textColor,
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
               ),
@@ -611,7 +619,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
             Text(
               subtitle,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 color: mutedColor,
                 fontSize: 12,
               ),
@@ -650,16 +658,16 @@ class _CustomersScreenState extends State<CustomersScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Customers',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: textColor,
                     fontSize: 25,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 6),
-                const Text(
+                Text(
                   'Manage your business relationships in one place.',
                   style: TextStyle(
                     color: mutedColor,
@@ -714,14 +722,14 @@ class _CustomersScreenState extends State<CustomersScreen> {
                       searchText = value;
                     });
                   },
-                  style: const TextStyle(color: Colors.white),
+                  style: TextStyle(color: textColor),
                   decoration: InputDecoration(
                     hintText: 'Search customers...',
-                    hintStyle: const TextStyle(
+                    hintStyle: TextStyle(
                       color: mutedColor,
                       fontSize: 13,
                     ),
-                    prefixIcon: const Icon(
+                    prefixIcon: Icon(
                       Icons.search,
                       color: emeraldLight,
                     ),
@@ -733,7 +741,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                                 searchText = '';
                               });
                             },
-                            icon: const Icon(
+                            icon: Icon(
                               Icons.close,
                               color: mutedColor,
                             ),
@@ -771,11 +779,11 @@ class _CustomersScreenState extends State<CustomersScreen> {
 
                 Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Text(
                         'All Customers',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: textColor,
                           fontSize: 17,
                           fontWeight: FontWeight.bold,
                         ),
@@ -783,7 +791,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                     ),
                     Text(
                       '${filteredCustomers.length} records',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: mutedColor,
                         fontSize: 12,
                       ),
@@ -857,7 +865,12 @@ class _CustomerDialogState extends State<CustomerDialog> {
   bool isSaving = false;
 
   static const Color emerald = Color(0xFF00C853);
-  static const Color mutedColor = Color(0xFF9AA69D);
+
+  Color get textColor => Theme.of(context).colorScheme.onSurface;
+  Color get mutedColor => Theme.of(context).colorScheme.onSurfaceVariant;
+  Color get fieldColor =>
+      Theme.of(context).colorScheme.surfaceContainerHighest;
+  Color get borderColor => Theme.of(context).colorScheme.outlineVariant;
 
   @override
   void initState() {
@@ -938,13 +951,13 @@ class _CustomerDialogState extends State<CustomerDialog> {
         controller: controller,
         keyboardType: keyboardType,
         validator: validator,
-        style: const TextStyle(color: Colors.white),
+        style: TextStyle(color: textColor),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: const TextStyle(color: mutedColor),
+          labelStyle: TextStyle(color: mutedColor),
           prefixIcon: Icon(icon, color: emerald),
           filled: true,
-          fillColor: const Color(0xFF1A241D),
+          fillColor: fieldColor,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(13),
             borderSide: BorderSide.none,
@@ -952,7 +965,7 @@ class _CustomerDialogState extends State<CustomerDialog> {
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(13),
             borderSide: BorderSide(
-              color: Colors.white.withValues(alpha: 0.07),
+              color: borderColor.withValues(alpha: 0.65),
             ),
           ),
           focusedBorder: OutlineInputBorder(
@@ -972,11 +985,11 @@ class _CustomerDialogState extends State<CustomerDialog> {
     final isEditing = widget.customer != null;
 
     return AlertDialog(
-      backgroundColor: const Color(0xFF121A15),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       title: Text(
         isEditing ? 'Edit Customer' : 'Add Customer',
-        style: const TextStyle(
-          color: Colors.white,
+        style: TextStyle(
+          color: textColor,
           fontWeight: FontWeight.bold,
         ),
       ),
@@ -1037,7 +1050,7 @@ class _CustomerDialogState extends State<CustomerDialog> {
           onPressed: isSaving
               ? null
               : () => Navigator.pop(context, false),
-          child: const Text(
+          child: Text(
             'Cancel',
             style: TextStyle(color: mutedColor),
           ),

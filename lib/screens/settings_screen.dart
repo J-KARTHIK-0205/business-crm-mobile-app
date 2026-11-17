@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import '../auth/auth_service.dart';
-
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -13,64 +11,67 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore firestore = FirebaseFirestore.instance;
+  final FirebaseAuth auth = FirebaseAuth.instance;
 
-  final nameController = TextEditingController();
-  final emailController = TextEditingController();
-  final phoneController = TextEditingController();
-  final businessNameController = TextEditingController();
-  final businessAddressController = TextEditingController();
+  String userName = '';
+  String email = '';
+  String phone = '';
 
-  bool notificationsEnabled = true;
+  String businessName = 'My Business';
+  String businessEmail = '';
+
   bool emailNotifications = true;
-  bool darkModeEnabled = false;
+  bool taskReminders = true;
+  bool leadNotifications = false;
+
+  String selectedTheme = 'Light';
 
   bool isLoading = true;
-  bool isSaving = false;
-  bool loggingOut = false;
 
-  User? get currentUser => FirebaseAuth.instance.currentUser;
+  String get uid => auth.currentUser!.uid;
 
-  static const green = Color(0xFF00C853);
-  static const muted = Color(0xFF9AA69D);
-  static const card = Color(0xFF121A15);
+  DocumentReference<Map<String, dynamic>> get profileRef =>
+      firestore
+          .collection('users')
+          .doc(uid)
+          .collection('profile')
+          .doc('details');
 
-  // USER PROFILE DOCUMENT
-  DocumentReference<Map<String, dynamic>> get userProfileRef {
-    final user = currentUser;
+  DocumentReference<Map<String, dynamic>> get businessRef =>
+      firestore
+          .collection('users')
+          .doc(uid)
+          .collection('business')
+          .doc('details');
 
-    if (user == null) {
-      throw Exception('No logged-in user found.');
-    }
+  DocumentReference<Map<String, dynamic>> get preferencesRef =>
+      firestore
+          .collection('users')
+          .doc(uid)
+          .collection('settings')
+          .doc('preferences');
 
-    return firestore.collection('users').doc(user.uid);
-  }
+  bool get isDark =>
+      Theme.of(context).brightness == Brightness.dark;
 
-  // USER-SPECIFIC BUSINESS DOCUMENT
-  DocumentReference<Map<String, dynamic>> get businessRef {
-    final user = currentUser;
+  Color get pageBackground =>
+      isDark ? const Color(0xFF080C09) : const Color(0xFFF5F7FA);
 
-    if (user == null) {
-      throw Exception('No logged-in user found.');
-    }
+  Color get cardBackground =>
+      isDark ? const Color(0xFF121A15) : Colors.white;
 
-    return firestore
-        .collection('app_settings')
-        .doc('business_${user.uid}');
-  }
+  Color get primaryText =>
+      isDark ? Colors.white : const Color(0xFF17211B);
 
-  // USER-SPECIFIC PREFERENCES DOCUMENT
-  DocumentReference<Map<String, dynamic>> get preferencesRef {
-    final user = currentUser;
+  Color get secondaryText =>
+      isDark ? const Color(0xFF9AA69D) : const Color(0xFF65736A);
 
-    if (user == null) {
-      throw Exception('No logged-in user found.');
-    }
+  Color get borderColor =>
+      isDark ? Colors.white12 : const Color(0xFFE1E8E3);
 
-    return firestore
-        .collection('app_settings')
-        .doc('preferences_${user.uid}');
-  }
+  Color get accentColor =>
+      isDark ? const Color(0xFF69F0AE) : const Color(0xFF00A843);
 
   @override
   void initState() {
@@ -78,320 +79,460 @@ class _SettingsScreenState extends State<SettingsScreen> {
     loadSettings();
   }
 
-  @override
-  void dispose() {
-    nameController.dispose();
-    emailController.dispose();
-    phoneController.dispose();
-    businessNameController.dispose();
-    businessAddressController.dispose();
-    super.dispose();
-  }
-
-  // --------------------------------------------------
-  // LOAD SETTINGS
-  // --------------------------------------------------
-
+  // LOAD SETTINGS FOR THE CURRENTLY SIGNED-IN USER
   Future<void> loadSettings() async {
     try {
-      final user = currentUser;
+      final currentUser = auth.currentUser;
 
-      if (user == null) {
-        throw Exception('Please log in again.');
+      if (currentUser == null) {
+        if (mounted) {
+          setState(() => isLoading = false);
+        }
+        return;
       }
 
       final results = await Future.wait([
-        userProfileRef.get(),
+        profileRef.get(),
         businessRef.get(),
         preferencesRef.get(),
       ]);
 
-      final profile =
+      final profileData =
           results[0].data() ?? <String, dynamic>{};
 
-      final business =
+      final businessData =
           results[1].data() ?? <String, dynamic>{};
 
-      final preferences =
+      final preferenceData =
           results[2].data() ?? <String, dynamic>{};
-
-      await user.reload();
-
-      final refreshedUser =
-          FirebaseAuth.instance.currentUser;
 
       if (!mounted) return;
 
       setState(() {
-        nameController.text =
-            refreshedUser?.displayName ??
-            profile['name']?.toString() ??
-            '';
+        final savedName = profileData['name'] as String?;
 
-        emailController.text =
-            refreshedUser?.email ??
-            profile['email']?.toString() ??
-            '';
+        if (savedName != null && savedName.trim().isNotEmpty) {
+          userName = savedName.trim();
+        } else if (currentUser.displayName != null &&
+            currentUser.displayName!.trim().isNotEmpty) {
+          userName = currentUser.displayName!.trim();
+        } else {
+          userName = currentUser.email?.split('@').first ?? 'User';
+        }
 
-        phoneController.text =
-            profile['phone']?.toString() ?? '';
+        // Always display the currently authenticated email.
+        email = currentUser.email ?? '';
 
-        businessNameController.text =
-            business['businessName']?.toString() ?? '';
+        phone = profileData['phone'] as String? ?? '';
 
-        businessAddressController.text =
-            business['businessAddress']?.toString() ?? '';
+        businessName =
+            businessData['name'] as String? ?? 'My Business';
 
-        notificationsEnabled =
-            preferences['notificationsEnabled'] is bool
-                ? preferences['notificationsEnabled'] as bool
-                : true;
+        businessEmail =
+            businessData['email'] as String? ?? '';
 
         emailNotifications =
-            preferences['emailNotifications'] is bool
-                ? preferences['emailNotifications'] as bool
-                : true;
+            preferenceData['emailNotifications'] as bool? ?? true;
+
+        taskReminders =
+            preferenceData['taskReminders'] as bool? ?? true;
+
+        leadNotifications =
+            preferenceData['leadNotifications'] as bool? ?? false;
 
         final savedDarkMode =
-            preferences['darkModeEnabled'];
+            preferenceData['darkModeEnabled'];
 
-        darkModeEnabled = savedDarkMode is bool
-            ? savedDarkMode
-            : preferences['theme'] == 'Dark';
+        selectedTheme = savedDarkMode is bool
+            ? (savedDarkMode ? 'Dark' : 'Light')
+            : (preferenceData['theme'] as String? ?? 'Light');
 
         isLoading = false;
       });
-    } catch (error) {
+    } catch (e) {
       if (!mounted) return;
 
-      setState(() => isLoading = false);
+      setState(() {
+        isLoading = false;
+      });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error loading settings: $error'),
-        ),
-      );
+      showMessage('Unable to load settings: $e');
     }
   }
 
-  // --------------------------------------------------
-  // SAVE SETTINGS
-  // --------------------------------------------------
+  // DISPLAY MESSAGE
+  void showMessage(String message) {
+    if (!mounted) return;
 
-  Future<void> saveSettings() async {
-    if (isSaving) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
 
-    final user = currentUser;
-
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please log in again.'),
-        ),
-      );
-      return;
-    }
-
-    final updatedName = nameController.text.trim();
-
-    if (updatedName.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Full name cannot be empty.'),
-        ),
-      );
-      return;
-    }
-
-    setState(() => isSaving = true);
-
+  // SAVE PROFILE FOR CURRENT USER
+  Future<void> saveProfile(
+    String name,
+    String emailAddress,
+    String phoneNumber,
+  ) async {
     try {
-      if (updatedName != (user.displayName ?? '')) {
-        await user.updateDisplayName(updatedName);
-        await user.reload();
+      final currentUser = auth.currentUser;
+
+      if (currentUser == null) {
+        showMessage('Please sign in again.');
+        return;
       }
 
-      final updatedUser =
-          FirebaseAuth.instance.currentUser;
+      await profileRef.set({
+        'name': name,
+        'email': currentUser.email ?? emailAddress,
+        'phone': phoneNumber,
+        'uid': currentUser.uid,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 
-      await Future.wait([
-        userProfileRef.set({
-          'uid': user.uid,
-          'name': updatedName,
-          'email': updatedUser?.email ?? user.email,
-          'phone': phoneController.text.trim(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true)),
-
-        businessRef.set({
-          'businessName':
-              businessNameController.text.trim(),
-          'businessAddress':
-              businessAddressController.text.trim(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true)),
-
-        preferencesRef.set({
-          'notificationsEnabled': notificationsEnabled,
-          'emailNotifications': emailNotifications,
-          'darkModeEnabled': darkModeEnabled,
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true)),
-      ]);
+      await currentUser.updateDisplayName(name);
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Settings saved successfully.'),
-        ),
-      );
-    } catch (error) {
-      if (!mounted) return;
+      setState(() {
+        userName = name;
+        email = currentUser.email ?? emailAddress;
+        phone = phoneNumber;
+      });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error saving settings: $error'),
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => isSaving = false);
-      }
+      showMessage('Profile updated successfully.');
+    } catch (e) {
+      showMessage('Unable to save profile: $e');
     }
   }
 
-  // --------------------------------------------------
-  // UPDATE DARK MODE PREFERENCE
-  // --------------------------------------------------
-
-  Future<void> updateDarkMode(bool value) async {
-    final previousValue = darkModeEnabled;
-
-    setState(() => darkModeEnabled = value);
-
+  // SAVE BUSINESS INFORMATION FOR CURRENT USER
+  Future<void> saveBusiness(
+    String name,
+    String emailAddress,
+  ) async {
     try {
-      await preferencesRef.set({
-        'darkModeEnabled': value,
+      await businessRef.set({
+        'name': name,
+        'email': emailAddress,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            value
-                ? 'Dark mode preference saved.'
-                : 'Light mode preference saved.',
-          ),
-        ),
-      );
-    } catch (error) {
-      if (!mounted) return;
+      setState(() {
+        businessName = name;
+        businessEmail = emailAddress;
+      });
 
-      setState(() => darkModeEnabled = previousValue);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Unable to update theme: $error'),
-        ),
-      );
+      showMessage('Business information saved.');
+    } catch (e) {
+      showMessage('Unable to save business information: $e');
     }
   }
 
-  // --------------------------------------------------
-  // LOGOUT
-  // --------------------------------------------------
+  // SAVE NOTIFICATION AND THEME PREFERENCES
+  // This is the same document read by main.dart.
+  Future<void> savePreferences({
+    bool? emailValue,
+    bool? taskValue,
+    bool? leadValue,
+    String? themeValue,
+  }) async {
+    final oldEmail = emailNotifications;
+    final oldTask = taskReminders;
+    final oldLead = leadNotifications;
+    final oldTheme = selectedTheme;
 
-  Future<void> logout() async {
-    if (loggingOut) return;
+    setState(() {
+      if (emailValue != null) {
+        emailNotifications = emailValue;
+      }
 
-    setState(() => loggingOut = true);
+      if (taskValue != null) {
+        taskReminders = taskValue;
+      }
+
+      if (leadValue != null) {
+        leadNotifications = leadValue;
+      }
+
+      if (themeValue != null) {
+        selectedTheme = themeValue;
+      }
+    });
 
     try {
-      await AuthService().logout();
-    } catch (error) {
+      await preferencesRef.set({
+        'emailNotifications': emailNotifications,
+        'taskReminders': taskReminders,
+        'leadNotifications': leadNotifications,
+        'theme': selectedTheme,
+        'darkModeEnabled': selectedTheme == 'Dark',
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Logout failed: $error'),
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => loggingOut = false);
+      if (themeValue != null) {
+        showMessage('$themeValue Mode enabled.');
       }
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        emailNotifications = oldEmail;
+        taskReminders = oldTask;
+        leadNotifications = oldLead;
+        selectedTheme = oldTheme;
+      });
+
+      showMessage('Unable to save preferences: $e');
     }
   }
 
-  Future<void> confirmLogout() async {
-    final confirmed = await showDialog<bool>(
+  // EDIT PROFILE DIALOG
+  void showProfileDialog() {
+    final nameController =
+        TextEditingController(text: userName);
+
+    final emailController =
+        TextEditingController(text: email);
+
+    final phoneController =
+        TextEditingController(text: phone);
+
+    showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: card,
-        title: const Text(
-          'Logout?',
-          style: TextStyle(color: Colors.white),
+        backgroundColor: cardBackground,
+        title: Text(
+          'Edit Profile',
+          style: TextStyle(color: primaryText),
         ),
-        content: const Text(
-          'Are you sure you want to sign out?',
-          style: TextStyle(color: muted),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                style: TextStyle(color: primaryText),
+                decoration: const InputDecoration(
+                  labelText: 'Full Name',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 15),
+              TextField(
+                controller: emailController,
+                keyboardType: TextInputType.emailAddress,
+                style: TextStyle(color: primaryText),
+                decoration: const InputDecoration(
+                  labelText: 'Email Address',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 15),
+              TextField(
+                controller: phoneController,
+                keyboardType: TextInputType.phone,
+                style: TextStyle(color: primaryText),
+                decoration: const InputDecoration(
+                  labelText: 'Phone Number',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
-            onPressed: () =>
-                Navigator.pop(dialogContext, false),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
-            onPressed: () =>
-                Navigator.pop(dialogContext, true),
-            child: const Text('Logout'),
+          ElevatedButton(
+            onPressed: () async {
+              final name = nameController.text.trim();
+              final emailAddress =
+                  emailController.text.trim();
+              final phoneNumber =
+                  phoneController.text.trim();
+
+              if (name.isEmpty || emailAddress.isEmpty) {
+                showMessage('Name and email are required.');
+                return;
+              }
+
+              if (!emailAddress.contains('@')) {
+                showMessage('Enter a valid email address.');
+                return;
+              }
+
+              Navigator.pop(dialogContext);
+
+              await saveProfile(
+                name,
+                emailAddress,
+                phoneNumber,
+              );
+            },
+            child: const Text('Save Changes'),
           ),
         ],
       ),
-    );
-
-    if (confirmed == true && mounted) {
-      await logout();
-    }
+    ).then((_) {
+      nameController.dispose();
+      emailController.dispose();
+      phoneController.dispose();
+    });
   }
 
-  // --------------------------------------------------
-  // SECTION TITLE
-  // --------------------------------------------------
+  // EDIT BUSINESS DIALOG
+  void showBusinessDialog() {
+    final nameController =
+        TextEditingController(text: businessName);
 
-  Widget _sectionTitle(
+    final emailController =
+        TextEditingController(text: businessEmail);
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: cardBackground,
+        title: Text(
+          'Business Information',
+          style: TextStyle(color: primaryText),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                style: TextStyle(color: primaryText),
+                decoration: const InputDecoration(
+                  labelText: 'Business Name',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 15),
+              TextField(
+                controller: emailController,
+                keyboardType: TextInputType.emailAddress,
+                style: TextStyle(color: primaryText),
+                decoration: const InputDecoration(
+                  labelText: 'Business Email',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final name = nameController.text.trim();
+              final emailAddress =
+                  emailController.text.trim();
+
+              if (name.isEmpty) {
+                showMessage('Business name is required.');
+                return;
+              }
+
+              Navigator.pop(dialogContext);
+
+              await saveBusiness(name, emailAddress);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    ).then((_) {
+      nameController.dispose();
+      emailController.dispose();
+    });
+  }
+
+  // SECTION TITLE
+  Widget sectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(
+        top: 25,
+        bottom: 12,
+      ),
+      child: Text(
+        title,
+        style: TextStyle(
+          color: primaryText,
+          fontSize: 19,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  // SETTINGS CARD
+  Widget settingsCard({required Widget child}) {
+    return Card(
+      color: cardBackground,
+      elevation: isDark ? 0 : 1,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),
+        side: BorderSide(color: borderColor),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: child,
+      ),
+    );
+  }
+
+  // INFORMATION ROW
+  Widget informationRow(
+    IconData icon,
     String title,
     String subtitle,
   ) {
     return Padding(
-      padding: const EdgeInsets.only(
-        top: 23,
-        bottom: 12,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 17,
-              fontWeight: FontWeight.bold,
+          CircleAvatar(
+            backgroundColor: isDark
+                ? const Color(0xFF183B2A)
+                : Colors.blue.shade50,
+            child: Icon(
+              icon,
+              color: isDark
+                  ? const Color(0xFF69F0AE)
+                  : Colors.blue,
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: const TextStyle(
-              color: muted,
-              fontSize: 12,
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: primaryText,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: TextStyle(color: secondaryText),
+                ),
+              ],
             ),
           ),
         ],
@@ -399,321 +540,357 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // --------------------------------------------------
-  // INPUT FIELD
-  // --------------------------------------------------
-
-  Widget _input({
-    required String label,
-    required TextEditingController controller,
-    required IconData icon,
-    TextInputType keyboardType = TextInputType.text,
-    bool readOnly = false,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 13),
-      child: TextField(
-        controller: controller,
-        keyboardType: keyboardType,
-        readOnly: readOnly,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: const TextStyle(color: muted),
-          prefixIcon: Icon(icon, color: green),
-          suffixIcon: readOnly
-              ? const Icon(
-                  Icons.lock_outline,
-                  color: muted,
-                )
-              : null,
-          filled: true,
-          fillColor: const Color(0xFF1A241D),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(13),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(13),
-            borderSide: BorderSide(
-              color: Colors.white.withValues(alpha: 0.06),
-            ),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(13),
-            borderSide: const BorderSide(
-              color: green,
-            ),
-          ),
+  // NOTIFICATION SWITCH
+  Widget notificationSwitch(
+    String title,
+    String subtitle,
+    bool value,
+    ValueChanged<bool> onChanged,
+  ) {
+    return SwitchListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text(
+        title,
+        style: TextStyle(
+          color: primaryText,
+          fontWeight: FontWeight.w600,
         ),
       ),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(color: secondaryText),
+      ),
+      value: value,
+      onChanged: onChanged,
+      activeThumbColor: accentColor,
     );
   }
-
-  // --------------------------------------------------
-  // PREFERENCE SWITCH CARD
-  // --------------------------------------------------
-
-  Widget _switchCard({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: card,
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.06),
-        ),
-      ),
-      child: SwitchListTile(
-        value: value,
-        onChanged: onChanged,
-        activeThumbColor: green,
-        secondary: Icon(icon, color: green),
-        title: Text(
-          title,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        subtitle: Text(
-          subtitle,
-          style: const TextStyle(
-            color: muted,
-            fontSize: 12,
-          ),
-        ),
-      ),
-    );
-  }
-
-  // --------------------------------------------------
-  // SETTINGS SCREEN UI
-  // --------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
       return const Center(
-        child: CircularProgressIndicator(
-          color: green,
-        ),
+        child: CircularProgressIndicator(),
       );
     }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.only(bottom: 28),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Settings',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 25,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-
-          const SizedBox(height: 6),
-
-          const Text(
-            'Manage your profile, workspace and preferences.',
-            style: TextStyle(
-              color: muted,
-              fontSize: 13,
-            ),
-          ),
-
-          // PROFILE INFORMATION
-
-          _sectionTitle(
-            'Profile Information',
-            'Your personal account details',
-          ),
-
-          _input(
-            label: 'Full Name',
-            controller: nameController,
-            icon: Icons.person_outline,
-          ),
-
-          _input(
-            label: 'Email Address',
-            controller: emailController,
-            icon: Icons.email_outlined,
-            keyboardType: TextInputType.emailAddress,
-            readOnly: true,
-          ),
-
-          _input(
-            label: 'Phone Number',
-            controller: phoneController,
-            icon: Icons.phone_outlined,
-            keyboardType: TextInputType.phone,
-          ),
-
-          // BUSINESS INFORMATION
-
-          _sectionTitle(
-            'Business Information',
-            'Details about your workspace',
-          ),
-
-          _input(
-            label: 'Business Name',
-            controller: businessNameController,
-            icon: Icons.business_outlined,
-          ),
-
-          _input(
-            label: 'Business Address',
-            controller: businessAddressController,
-            icon: Icons.location_on_outlined,
-          ),
-
-          // PREFERENCES
-
-          _sectionTitle(
-            'Preferences',
-            'Customize your CRM experience',
-          ),
-
-          _switchCard(
-            title: 'Push Notifications',
-            subtitle: 'Receive app notifications',
-            icon: Icons.notifications_active_outlined,
-            value: notificationsEnabled,
-            onChanged: (value) {
-              setState(() {
-                notificationsEnabled = value;
-              });
-            },
-          ),
-
-          _switchCard(
-            title: 'Email Notifications',
-            subtitle: 'Receive updates through email',
-            icon: Icons.mark_email_unread_outlined,
-            value: emailNotifications,
-            onChanged: (value) {
-              setState(() {
-                emailNotifications = value;
-              });
-            },
-          ),
-
-          _switchCard(
-            title: 'Dark Mode',
-            subtitle: 'Use the dark CRM appearance',
-            icon: Icons.dark_mode_outlined,
-            value: darkModeEnabled,
-            onChanged: updateDarkMode,
-          ),
-
-          const SizedBox(height: 20),
-
-          // SAVE SETTINGS BUTTON
-
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: isSaving ? null : saveSettings,
-              icon: isSaving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.black,
-                      ),
-                    )
-                  : const Icon(Icons.save_outlined),
-              label: Text(
-                isSaving ? 'Saving...' : 'Save Settings',
-              ),
-              style: FilledButton.styleFrom(
-                backgroundColor: green,
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(
-                  vertical: 15,
-                ),
-              ),
-            ),
-          ),
-
-          // ACCOUNT SETTINGS
-
-          _sectionTitle(
-            'Account',
-            'Manage your current session',
-          ),
-
-          Container(
-            decoration: BoxDecoration(
-              color: card,
-              borderRadius: BorderRadius.circular(15),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.06),
-              ),
-            ),
-            child: ListTile(
-              leading: const Icon(
-                Icons.logout,
-                color: Colors.redAccent,
-              ),
-              title: const Text(
-                'Logout',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              subtitle: const Text(
-                'Sign out from your account',
-                style: TextStyle(
-                  color: muted,
-                  fontSize: 12,
-                ),
-              ),
-              trailing: loggingOut
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: green,
-                      ),
-                    )
-                  : const Icon(
-                      Icons.arrow_forward_ios,
-                      color: muted,
-                      size: 16,
-                    ),
-              onTap: loggingOut ? null : confirmLogout,
-            ),
-          ),
-
-          const SizedBox(height: 30),
-
-          const Center(
-            child: Text(
-              'Business CRM © 2026',
+    return Container(
+      color: pageBackground,
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Settings',
               style: TextStyle(
-                color: muted,
-                fontSize: 12,
+                color: primaryText,
+                fontSize: 27,
+                fontWeight: FontWeight.bold,
               ),
             ),
-          ),
 
-          const SizedBox(height: 15),
-        ],
+            const SizedBox(height: 8),
+
+            Text(
+              'Manage your profile, business and application preferences.',
+              style: TextStyle(color: secondaryText),
+            ),
+
+            // PROFILE SETTINGS
+            sectionTitle('Profile Settings'),
+
+            settingsCard(
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 32,
+                        backgroundColor: isDark
+                            ? const Color(0xFF183B2A)
+                            : Colors.blue.shade50,
+                        child: Icon(
+                          Icons.person,
+                          size: 35,
+                          color: isDark
+                              ? const Color(0xFF69F0AE)
+                              : Colors.blue,
+                        ),
+                      ),
+                      const SizedBox(width: 15),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment:
+                              CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              userName,
+                              style: TextStyle(
+                                color: primaryText,
+                                fontSize: 19,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              email,
+                              style: TextStyle(
+                                color: secondaryText,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: showProfileDialog,
+                        icon: const Icon(Icons.edit, size: 16),
+                        label: const Text('Edit'),
+                      ),
+                    ],
+                  ),
+                  Divider(height: 30, color: borderColor),
+                  informationRow(
+                    Icons.phone,
+                    'Phone Number',
+                    phone,
+                  ),
+                  informationRow(
+                    Icons.email,
+                    'Email Address',
+                    email,
+                  ),
+                ],
+              ),
+            ),
+
+            // BUSINESS INFORMATION
+            sectionTitle('Business Information'),
+
+            settingsCard(
+              child: Column(
+                children: [
+                  informationRow(
+                    Icons.business,
+                    'Business Name',
+                    businessName,
+                  ),
+                  informationRow(
+                    Icons.alternate_email,
+                    'Business Email',
+                    businessEmail,
+                  ),
+                  const SizedBox(height: 10),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: OutlinedButton.icon(
+                      onPressed: showBusinessDialog,
+                      icon: const Icon(Icons.edit, size: 16),
+                      label: const Text('Edit Business Details'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // NOTIFICATION PREFERENCES
+            sectionTitle('Notification Preferences'),
+
+            settingsCard(
+              child: Column(
+                children: [
+                  notificationSwitch(
+                    'Email Notifications',
+                    'Receive updates through email.',
+                    emailNotifications,
+                    (value) {
+                      savePreferences(emailValue: value);
+                    },
+                  ),
+                  Divider(color: borderColor),
+                  notificationSwitch(
+                    'Task Reminders',
+                    'Get reminders about pending tasks.',
+                    taskReminders,
+                    (value) {
+                      savePreferences(taskValue: value);
+                    },
+                  ),
+                  Divider(color: borderColor),
+                  notificationSwitch(
+                    'Lead Notifications',
+                    'Receive alerts about new leads.',
+                    leadNotifications,
+                    (value) {
+                      savePreferences(leadValue: value);
+                    },
+                  ),
+                ],
+              ),
+            ),
+
+            // APPEARANCE
+            sectionTitle('Appearance'),
+
+            settingsCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Choose Application Theme',
+                    style: TextStyle(
+                      color: primaryText,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  RadioGroup<String>(
+                    groupValue: selectedTheme,
+                    onChanged: (value) {
+                      if (value != null) {
+                        savePreferences(themeValue: value);
+                      }
+                    },
+                    child: Column(
+                      children: [
+                        RadioListTile<String>(
+                          value: 'Light',
+                          title: Text(
+                            'Light Mode',
+                            style: TextStyle(color: primaryText),
+                          ),
+                          secondary: Icon(
+                            Icons.light_mode,
+                            color: accentColor,
+                          ),
+                        ),
+                        RadioListTile<String>(
+                          value: 'Dark',
+                          title: Text(
+                            'Dark Mode',
+                            style: TextStyle(color: primaryText),
+                          ),
+                          secondary: Icon(
+                            Icons.dark_mode,
+                            color: accentColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ACCOUNT SETTINGS
+            sectionTitle('Account Settings'),
+
+            settingsCard(
+              child: Column(
+                children: [
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      Icons.lock_outline,
+                      color: accentColor,
+                    ),
+                    title: Text(
+                      'Change Password',
+                      style: TextStyle(color: primaryText),
+                    ),
+                    subtitle: Text(
+                      'Send a password reset link to your email.',
+                      style: TextStyle(color: secondaryText),
+                    ),
+                    trailing: Icon(
+                      Icons.arrow_forward_ios,
+                      size: 16,
+                      color: secondaryText,
+                    ),
+                    onTap: () async {
+                      final currentEmail = auth.currentUser?.email;
+
+                      if (currentEmail == null) {
+                        showMessage('No authenticated email found.');
+                        return;
+                      }
+
+                      try {
+                        await auth.sendPasswordResetEmail(
+                          email: currentEmail,
+                        );
+                        showMessage(
+                          'Password reset link sent to $currentEmail.',
+                        );
+                      } catch (e) {
+                        showMessage('Unable to send reset email: $e');
+                      }
+                    },
+                  ),
+                  Divider(color: borderColor),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(
+                      Icons.logout,
+                      color: Colors.red,
+                    ),
+                    title: const Text(
+                      'Logout',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                    subtitle: Text(
+                      'Sign out of your account.',
+                      style: TextStyle(color: secondaryText),
+                    ),
+                    onTap: () async {
+                      try {
+                        await auth.signOut();
+                      } catch (e) {
+                        showMessage('Unable to log out: $e');
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+
+            // ABOUT APPLICATION
+            sectionTitle('About Application'),
+
+            settingsCard(
+              child: Column(
+                children: [
+                  informationRow(
+                    Icons.apps,
+                    'Application Name',
+                    'Business CRM',
+                  ),
+                  informationRow(
+                    Icons.info_outline,
+                    'Version',
+                    '1.0.0',
+                  ),
+                  informationRow(
+                    Icons.developer_mode,
+                    'Developed Using',
+                    'Flutter & Dart',
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 25),
+
+            Center(
+              child: Text(
+                'Business CRM © 2026',
+                style: TextStyle(color: secondaryText),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+          ],
+        ),
       ),
     );
   }

@@ -1,3 +1,4 @@
+
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -16,8 +17,11 @@ class _OrganizationsScreenState extends State<OrganizationsScreen> {
   final searchController = TextEditingController();
 
   static const green = Color(0xFF00C853);
-  static const muted = Color(0xFF9AA69D);
-  static const card = Color(0xFF121A15);
+
+  Color get muted => Theme.of(context).colorScheme.onSurfaceVariant;
+  Color get card => Theme.of(context).colorScheme.surfaceContainerHighest;
+  Color get textColor => Theme.of(context).colorScheme.onSurface;
+  Color get borderColor => Theme.of(context).colorScheme.outlineVariant;
 
   final types = ['All', 'Company', 'College', 'Sponsor'];
 
@@ -243,14 +247,18 @@ class _OrganizationsScreenState extends State<OrganizationsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: card,
-        title: const Text(
+        backgroundColor: Theme.of(dialogContext).colorScheme.surface,
+        title: Text(
           'Delete Organization?',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(
+            color: Theme.of(dialogContext).colorScheme.onSurface,
+          ),
         ),
         content: Text(
           'Delete $name? This cannot be undone.',
-          style: const TextStyle(color: muted),
+          style: TextStyle(
+            color: Theme.of(dialogContext).colorScheme.onSurfaceVariant,
+          ),
         ),
         actions: [
           TextButton(
@@ -344,7 +352,7 @@ class _OrganizationsScreenState extends State<OrganizationsScreen> {
         color: card,
         borderRadius: BorderRadius.circular(17),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.06),
+          color: borderColor,
         ),
       ),
       child: Row(
@@ -359,7 +367,7 @@ class _OrganizationsScreenState extends State<OrganizationsScreen> {
             ),
             child: Icon(
               typeIcon(type),
-              color: const Color(0xFF69F0AE),
+              color: Theme.of(context).colorScheme.primary,
             ),
           ),
           const SizedBox(width: 12),
@@ -369,8 +377,8 @@ class _OrganizationsScreenState extends State<OrganizationsScreen> {
               children: [
                 Text(
                   name,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: textColor,
                     fontWeight: FontWeight.bold,
                     fontSize: 15,
                   ),
@@ -402,7 +410,7 @@ class _OrganizationsScreenState extends State<OrganizationsScreen> {
           ),
           PopupMenuButton<String>(
             color: card,
-            icon: const Icon(Icons.more_vert, color: muted),
+            icon: Icon(Icons.more_vert, color: muted),
             onSelected: (value) {
               if (value == 'edit') {
                 showOrganizationDialog(id: id, data: data);
@@ -436,8 +444,8 @@ class _OrganizationsScreenState extends State<OrganizationsScreen> {
       ),
       child: Text(
         value,
-        style: const TextStyle(
-          color: Color(0xFF69F0AE),
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.primary,
           fontSize: 11,
           fontWeight: FontWeight.w600,
         ),
@@ -455,7 +463,7 @@ class _OrganizationsScreenState extends State<OrganizationsScreen> {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(color: muted, fontSize: 12),
+              style: TextStyle(color: muted, fontSize: 12),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -477,15 +485,15 @@ class _OrganizationsScreenState extends State<OrganizationsScreen> {
           children: [
             Text(
               '$count',
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: textColor,
                 fontWeight: FontWeight.bold,
                 fontSize: 21,
               ),
             ),
             Text(
               label,
-              style: const TextStyle(color: muted, fontSize: 11),
+              style: TextStyle(color: muted, fontSize: 11),
             ),
           ],
         ),
@@ -496,7 +504,7 @@ class _OrganizationsScreenState extends State<OrganizationsScreen> {
   @override
   Widget build(BuildContext context) {
     if (user == null) {
-      return const Center(
+      return Center(
         child: Text(
           'Please log in to continue.',
           style: TextStyle(color: muted),
@@ -517,7 +525,7 @@ class _OrganizationsScreenState extends State<OrganizationsScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.cloud_off_outlined,
                 color: muted,
                 size: 42,
@@ -526,7 +534,7 @@ class _OrganizationsScreenState extends State<OrganizationsScreen> {
               Text(
                 loadError!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: muted),
+                style: TextStyle(color: muted),
               ),
               const SizedBox(height: 15),
               FilledButton.icon(
@@ -563,16 +571,16 @@ class _OrganizationsScreenState extends State<OrganizationsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Organizations',
               style: TextStyle(
-                color: Colors.white,
+                color: textColor,
                 fontSize: 25,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 6),
-            const Text(
+            Text(
               'Manage companies, colleges and sponsors.',
               style: TextStyle(color: muted, fontSize: 13),
             ),
@@ -592,10 +600,10 @@ class _OrganizationsScreenState extends State<OrganizationsScreen> {
               onChanged: (value) {
                 setState(() => searchQuery = value.trim());
               },
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: textColor),
               decoration: InputDecoration(
                 hintText: 'Search organizations...',
-                hintStyle: const TextStyle(color: muted, fontSize: 12),
+                hintStyle: TextStyle(color: muted, fontSize: 12),
                 prefixIcon: const Icon(Icons.search, color: green),
                 suffixIcon: searchQuery.isEmpty
                     ? null
@@ -604,7 +612,7 @@ class _OrganizationsScreenState extends State<OrganizationsScreen> {
                           searchController.clear();
                           setState(() => searchQuery = '');
                         },
-                        icon: const Icon(Icons.close, color: muted),
+                        icon: Icon(Icons.close, color: muted),
                       ),
                 filled: true,
                 fillColor: card,
@@ -618,10 +626,10 @@ class _OrganizationsScreenState extends State<OrganizationsScreen> {
             DropdownButtonFormField<String>(
               initialValue: selectedType,
               dropdownColor: card,
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: textColor),
               decoration: InputDecoration(
                 labelText: 'Organization type',
-                labelStyle: const TextStyle(color: muted),
+                labelStyle: TextStyle(color: muted),
                 filled: true,
                 fillColor: card,
                 border: OutlineInputBorder(
@@ -658,11 +666,11 @@ class _OrganizationsScreenState extends State<OrganizationsScreen> {
             const SizedBox(height: 22),
             Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
                     'All Organizations',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: textColor,
                       fontSize: 17,
                       fontWeight: FontWeight.bold,
                     ),
@@ -670,7 +678,7 @@ class _OrganizationsScreenState extends State<OrganizationsScreen> {
                 ),
                 Text(
                   '${filtered.length} records',
-                  style: const TextStyle(color: muted, fontSize: 12),
+                  style: TextStyle(color: muted, fontSize: 12),
                 ),
               ],
             ),
@@ -690,7 +698,7 @@ class _OrganizationsScreenState extends State<OrganizationsScreen> {
                   child: Text(
                     'No organizations found. Add one to get started.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: muted),
+                    style: TextStyle(color: Colors.grey),
                   ),
                 ),
               )
@@ -732,6 +740,11 @@ class _OrganizationDialogState extends State<_OrganizationDialog> {
   bool saving = false;
 
   static const green = Color(0xFF00C853);
+
+  Color get textColor => Theme.of(context).colorScheme.onSurface;
+  Color get muted => Theme.of(context).colorScheme.onSurfaceVariant;
+  Color get fieldColor =>
+      Theme.of(context).colorScheme.surfaceContainerHighest;
 
   @override
   void initState() {
@@ -839,12 +852,13 @@ class _OrganizationDialogState extends State<_OrganizationDialog> {
         maxLines: maxLines,
         keyboardType: keyboardType,
         validator: validator,
-        style: const TextStyle(color: Colors.white),
+        style: TextStyle(color: textColor),
         decoration: InputDecoration(
           labelText: label,
+          labelStyle: TextStyle(color: muted),
           prefixIcon: Icon(icon, color: green),
           filled: true,
-          fillColor: const Color(0xFF1A241D),
+          fillColor: fieldColor,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
@@ -859,10 +873,10 @@ class _OrganizationDialogState extends State<_OrganizationDialog> {
     final editing = widget.data.isNotEmpty;
 
     return AlertDialog(
-      backgroundColor: const Color(0xFF121A15),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       title: Text(
         editing ? 'Edit Organization' : 'Add Organization',
-        style: const TextStyle(color: Colors.white),
+        style: TextStyle(color: textColor),
       ),
       content: SizedBox(
         width: 440,
@@ -885,13 +899,14 @@ class _OrganizationDialogState extends State<_OrganizationDialog> {
                 ),
                 DropdownButtonFormField<String>(
                   initialValue: selectedType,
-                  dropdownColor: const Color(0xFF1A241D),
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
+                  dropdownColor: fieldColor,
+                  style: TextStyle(color: textColor),
+                  decoration: InputDecoration(
                     labelText: 'Organization Type',
+                    labelStyle: TextStyle(color: muted),
                     filled: true,
-                    fillColor: Color(0xFF1A241D),
-                    border: OutlineInputBorder(),
+                    fillColor: fieldColor,
+                    border: const OutlineInputBorder(),
                   ),
                   items: const ['Company', 'College', 'Sponsor'].map((type) {
                     return DropdownMenuItem(

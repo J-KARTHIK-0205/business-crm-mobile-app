@@ -1,14 +1,19 @@
+
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
 
 import 'firebase_options.dart';
 import 'auth/auth_gate.dart';
 
 import 'screens/customers_screen.dart';
-import 'screens/leads_screen.dart';
 import 'screens/organizations_screen.dart';
+import 'screens/leads_screen.dart';
 import 'screens/tasks_screen.dart';
 import 'screens/reports_screen.dart';
 import 'screens/settings_screen.dart';
@@ -34,101 +39,6 @@ Future<void> main() async {
 class BusinessCRM extends StatelessWidget {
   const BusinessCRM({super.key});
 
-  ThemeData buildLightTheme() {
-    return ThemeData(
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF00C853),
-        brightness: Brightness.light,
-      ),
-      useMaterial3: true,
-      scaffoldBackgroundColor: const Color(0xFFF4F8F5),
-      cardTheme: const CardThemeData(
-        color: Colors.white,
-        elevation: 1,
-      ),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFFF4F8F5),
-        foregroundColor: Color(0xFF17231B),
-        elevation: 0,
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: const Color(0xFFF1F6F2),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-            color: Color(0xFFDCE8DF),
-          ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-            color: Color(0xFF00C853),
-            width: 1.5,
-          ),
-        ),
-      ),
-    );
-  }
-
-  ThemeData buildDarkTheme() {
-    return ThemeData(
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF00C853),
-        brightness: Brightness.dark,
-      ),
-      useMaterial3: true,
-      scaffoldBackgroundColor: const Color(0xFF080C09),
-      cardTheme: const CardThemeData(
-        color: Color(0xFF121A15),
-        elevation: 1,
-      ),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFF121A15),
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: const Color(0xFF1A241D),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-            color: Color(0xFF26352B),
-          ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-            color: Color(0xFF00C853),
-            width: 1.5,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget buildMaterialApp(ThemeMode themeMode) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Business CRM',
-      theme: buildLightTheme(),
-      darkTheme: buildDarkTheme(),
-      themeMode: themeMode,
-      home: AuthGate(
-        authenticatedView: const DashboardScreen(),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
@@ -136,33 +46,75 @@ class BusinessCRM extends StatelessWidget {
       builder: (context, authSnapshot) {
         final user = authSnapshot.data;
 
-        // While signed out, AuthGate handles the login screen.
         if (user == null) {
-          return buildMaterialApp(ThemeMode.dark);
+          return _buildMaterialApp(false);
         }
 
-        // Read theme preference belonging to the logged-in user.
+        final preferencesRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('settings')
+            .doc('preferences');
+
         return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-          stream: FirebaseFirestore.instance
-              .collection('app_settings')
-              .doc('preferences_${user.uid}')
-              .snapshots(),
-          builder: (context, settingsSnapshot) {
+          stream: preferencesRef.snapshots(),
+          builder: (context, snapshot) {
             final preferences =
-                settingsSnapshot.data?.data() ?? <String, dynamic>{};
+                snapshot.data?.data() ?? <String, dynamic>{};
 
             final savedDarkMode = preferences['darkModeEnabled'];
 
-            final isDarkMode = savedDarkMode is bool
+            final bool isDarkMode = savedDarkMode is bool
                 ? savedDarkMode
                 : preferences['theme'] == 'Dark';
 
-            return buildMaterialApp(
-              isDarkMode ? ThemeMode.dark : ThemeMode.light,
-            );
+            return _buildMaterialApp(isDarkMode);
           },
         );
       },
+    );
+  }
+
+  // --------------------------------------------------
+  // APPLICATION THEMES
+  // --------------------------------------------------
+
+  Widget _buildMaterialApp(bool isDarkMode) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Business CRM',
+
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF2563EB),
+          brightness: Brightness.light,
+        ),
+        useMaterial3: true,
+        scaffoldBackgroundColor: const Color(0xFFF5F7FB),
+        cardTheme: const CardThemeData(
+          color: Colors.white,
+          elevation: 1,
+        ),
+      ),
+
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF60A5FA),
+          brightness: Brightness.dark,
+        ),
+        useMaterial3: true,
+        scaffoldBackgroundColor: const Color(0xFF111827),
+        cardTheme: const CardThemeData(
+          color: Color(0xFF1F2937),
+          elevation: 1,
+        ),
+      ),
+
+      themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
+
+      home: AuthGate(
+        authenticatedView: const DashboardScreen(),
+      ),
     );
   }
 }
@@ -181,11 +133,12 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int selectedIndex = 0;
 
+  // Organizations added between Customers and Leads.
   final List<String> menuTitles = [
     'Dashboard',
     'Customers',
-    'Leads',
     'Organizations',
+    'Leads',
     'Tasks',
     'Reports',
     'Settings',
@@ -194,8 +147,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final List<IconData> menuIcons = [
     Icons.dashboard,
     Icons.people,
-    Icons.person_search,
     Icons.business,
+    Icons.person_search,
     Icons.task_alt,
     Icons.bar_chart,
     Icons.settings,
@@ -207,28 +160,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
+  // --------------------------------------------------
+  // PAGE NAVIGATION
+  // --------------------------------------------------
+
   Widget getCurrentPage() {
     switch (selectedIndex) {
       case 0:
         return const DashboardOverview();
+
       case 1:
         return const CustomersScreen();
+
       case 2:
-        return const LeadsScreen();
-      case 3:
         return const OrganizationsScreen();
+
+      case 3:
+        return const LeadsScreen();
+
       case 4:
         return const TasksScreen();
+
       case 5:
         return const ReportsScreen();
+
       case 6:
         return const SettingsScreen();
+
       default:
-        return const Center(child: Text('Page Not Found'));
+        return const Center(
+          child: Text('Page Not Found'),
+        );
     }
   }
 
+  // --------------------------------------------------
   // SIDEBAR MENU
+  // --------------------------------------------------
 
   Widget buildMenu(bool closeDrawer) {
     final theme = Theme.of(context);
@@ -256,6 +224,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ? primaryColor
                   : theme.colorScheme.onSurfaceVariant,
             ),
+
             title: Text(
               menuTitles[i],
               style: TextStyle(
@@ -267,10 +236,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     : FontWeight.normal,
               ),
             ),
+
             selected: selectedIndex == i,
-            selectedTileColor: theme.colorScheme.primaryContainer.withValues(
+
+            selectedTileColor:
+                theme.colorScheme.primaryContainer.withValues(
               alpha: 0.35,
             ),
+
             onTap: () {
               selectPage(i);
 
@@ -282,6 +255,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ],
     );
   }
+
+  // --------------------------------------------------
+  // DASHBOARD LAYOUT
+  // --------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -304,10 +281,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
             backgroundColor: theme.colorScheme.surface,
             foregroundColor: theme.colorScheme.onSurface,
             elevation: 0,
+
             title: const Text(
               'Business CRM',
-              style: TextStyle(fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
             ),
+
             actions: [
               IconButton(
                 onPressed: () {
@@ -317,16 +298,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   );
                 },
-                icon: const Icon(Icons.notifications_outlined),
+                icon: const Icon(
+                  Icons.notifications_outlined,
+                ),
               ),
+
               const SizedBox(width: 10),
+
               CircleAvatar(
-                backgroundColor: theme.colorScheme.primaryContainer,
+                backgroundColor:
+                    theme.colorScheme.primaryContainer,
                 child: Icon(
                   Icons.person,
                   color: theme.colorScheme.onPrimaryContainer,
                 ),
               ),
+
               const SizedBox(width: 20),
             ],
           ),
@@ -342,7 +329,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
               Expanded(
                 child: Padding(
-                  padding: EdgeInsets.all(isWide ? 24 : 16),
+                  padding: const EdgeInsets.all(24),
                   child: getCurrentPage(),
                 ),
               ),
@@ -355,13 +342,193 @@ class _DashboardScreenState extends State<DashboardScreen> {
 }
 
 // --------------------------------------------------
-// DASHBOARD OVERVIEW
+// DASHBOARD OVERVIEW - MYSQL / PHP API DATA
 // --------------------------------------------------
 
-class DashboardOverview extends StatelessWidget {
+class DashboardOverview extends StatefulWidget {
   const DashboardOverview({super.key});
 
-  // COMPACT STATISTICS CARD
+  @override
+  State<DashboardOverview> createState() =>
+      _DashboardOverviewState();
+}
+
+class _DashboardOverviewState extends State<DashboardOverview> {
+  static const Color _blue = Colors.blue;
+  static const Color _orange = Colors.orange;
+  static const Color _green = Colors.green;
+  static const Color _purple = Colors.purple;
+
+  bool isLoading = true;
+  String? loadError;
+
+  List<Map<String, dynamic>> customers = [];
+  List<Map<String, dynamic>> leads = [];
+  List<Map<String, dynamic>> tasks = [];
+
+  User? get currentUser => FirebaseAuth.instance.currentUser;
+
+  // --------------------------------------------------
+  // API URLS
+  // --------------------------------------------------
+
+  String get apiBaseUrl {
+    if (kIsWeb) {
+      return 'http://localhost/business_crm_api/api';
+    }
+
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return 'http://10.0.2.2/business_crm_api/api';
+    }
+
+    return 'http://localhost/business_crm_api/api';
+  }
+
+  String get customersApiUrl =>
+      '$apiBaseUrl/customers/index.php';
+
+  String get leadsApiUrl =>
+      '$apiBaseUrl/leads/index.php';
+
+  String get tasksApiUrl =>
+      '$apiBaseUrl/tasks/index.php';
+
+  @override
+  void initState() {
+    super.initState();
+    loadDashboardData();
+  }
+
+  // --------------------------------------------------
+  // AUTHENTICATION HEADERS
+  // --------------------------------------------------
+
+  Future<Map<String, String>> _getHeaders() async {
+    final user = currentUser;
+
+    if (user == null) {
+      throw Exception(
+        'Please log in to view dashboard data.',
+      );
+    }
+
+    final token = await user.getIdToken(true);
+
+    if (token == null || token.isEmpty) {
+      throw Exception(
+        'Unable to get Firebase authentication token.',
+      );
+    }
+
+    return {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+  }
+
+  // --------------------------------------------------
+  // FETCH RECORDS FROM PHP API
+  // --------------------------------------------------
+
+  Future<List<Map<String, dynamic>>> _fetchRecords(
+    String url,
+  ) async {
+    final response = await http
+        .get(
+          Uri.parse(url),
+          headers: await _getHeaders(),
+        )
+        .timeout(const Duration(seconds: 20));
+
+    dynamic decoded;
+
+    try {
+      decoded = jsonDecode(response.body);
+    } catch (_) {
+      throw Exception(
+        'The server returned an invalid response '
+        '(HTTP ${response.statusCode}).',
+      );
+    }
+
+    if (decoded is! Map<String, dynamic>) {
+      throw Exception(
+        'Unexpected response from the CRM API.',
+      );
+    }
+
+    if (response.statusCode < 200 ||
+        response.statusCode >= 300 ||
+        decoded['success'] != true) {
+      throw Exception(
+        (decoded['message'] ??
+                'Unable to load dashboard records.')
+            .toString(),
+      );
+    }
+
+    final data = decoded['data'];
+
+    if (data is! List) {
+      throw Exception(
+        'The CRM API did not return a records list.',
+      );
+    }
+
+    return data
+        .whereType<Map>()
+        .map(
+          (item) => Map<String, dynamic>.from(item),
+        )
+        .toList();
+  }
+
+  // --------------------------------------------------
+  // LOAD DASHBOARD DATA
+  // --------------------------------------------------
+
+  Future<void> loadDashboardData() async {
+    if (mounted) {
+      setState(() {
+        isLoading = true;
+        loadError = null;
+      });
+    }
+
+    try {
+      final results = await Future.wait([
+        _fetchRecords(customersApiUrl),
+        _fetchRecords(leadsApiUrl),
+        _fetchRecords(tasksApiUrl),
+      ]);
+
+      if (!mounted) return;
+
+      setState(() {
+        customers = results[0];
+        leads = results[1];
+        tasks = results[2];
+
+        isLoading = false;
+        loadError = null;
+      });
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() {
+        isLoading = false;
+
+        loadError = error
+            .toString()
+            .replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
+  // --------------------------------------------------
+  // STATISTICS CARD
+  // --------------------------------------------------
 
   Widget statCard(
     BuildContext context,
@@ -370,38 +537,33 @@ class DashboardOverview extends StatelessWidget {
     IconData icon,
     Color color,
   ) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-
     return Card(
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
       child: Padding(
-        padding: const EdgeInsets.all(13),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Icon(icon, color: color, size: 25),
+            Icon(
+              icon,
+              color: color,
+              size: 30,
+            ),
 
             Text(
               value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.headlineSmall?.copyWith(
+              style: const TextStyle(
+                fontSize: 23,
                 fontWeight: FontWeight.bold,
-                color: colors.onSurface,
               ),
             ),
 
             Text(
               title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colors.onSurfaceVariant,
+              style: TextStyle(
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurfaceVariant,
               ),
             ),
           ],
@@ -410,7 +572,9 @@ class DashboardOverview extends StatelessWidget {
     );
   }
 
+  // --------------------------------------------------
   // RECENT ACTIVITY ITEM
+  // --------------------------------------------------
 
   Widget activity(
     BuildContext context,
@@ -418,407 +582,391 @@ class DashboardOverview extends StatelessWidget {
     String subtitle,
     IconData icon,
   ) {
-    final colors = Theme.of(context).colorScheme;
-
     return ListTile(
-      dense: true,
-      visualDensity: const VisualDensity(vertical: -2),
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 2,
-      ),
       leading: CircleAvatar(
-        radius: 19,
-        backgroundColor: colors.primaryContainer,
+        backgroundColor:
+            Theme.of(context).colorScheme.primaryContainer,
         child: Icon(
           icon,
-          color: colors.primary,
-          size: 19,
+          color: Theme.of(context).colorScheme.primary,
         ),
       ),
-      title: Text(
-        title,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          fontWeight: FontWeight.w500,
-          fontSize: 13,
-        ),
-      ),
-      subtitle: Text(
-        subtitle,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(fontSize: 12),
-      ),
-      trailing: Icon(
-        Icons.chevron_right,
-        color: colors.onSurfaceVariant,
+      title: Text(title),
+      subtitle: Text(subtitle),
+      trailing: const Icon(
+        Icons.arrow_forward_ios,
+        size: 15,
       ),
     );
   }
 
+  // --------------------------------------------------
+  // DATE HANDLING
+  // --------------------------------------------------
+
+  DateTime _recordDate(Map<String, dynamic> data) {
+    final rawDate = data['created_at'] ??
+        data['createdAt'] ??
+        data['updated_at'] ??
+        data['updatedAt'];
+
+    if (rawDate is Timestamp) {
+      return rawDate.toDate();
+    }
+
+    if (rawDate is DateTime) {
+      return rawDate;
+    }
+
+    if (rawDate != null) {
+      return DateTime.tryParse(rawDate.toString()) ??
+          DateTime.fromMillisecondsSinceEpoch(0);
+    }
+
+    return DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
+  // --------------------------------------------------
+  // RECENT ACTIVITIES FROM MYSQL RECORDS
+  // --------------------------------------------------
+
+  List<Map<String, dynamic>> get recentActivities {
+    final items = <Map<String, dynamic>>[];
+
+    for (final customer in customers) {
+      final name = customer['customer_name'] ??
+          customer['name'] ??
+          'Customer';
+
+      items.add({
+        'title': 'New customer added',
+        'subtitle': name.toString(),
+        'icon': Icons.person_add,
+        'date': _recordDate(customer),
+      });
+    }
+
+    for (final lead in leads) {
+      final name = lead['lead_name'] ??
+          lead['name'] ??
+          'Lead';
+
+      items.add({
+        'title': 'New lead added',
+        'subtitle': name.toString(),
+        'icon': Icons.trending_up,
+        'date': _recordDate(lead),
+      });
+    }
+
+    for (final task in tasks) {
+      final status = task['status'] ?? 'Updated';
+
+      final title = task['title'] ??
+          task['task_title'] ??
+          'Task';
+
+      items.add({
+        'title': 'Task: $status',
+        'subtitle': title.toString(),
+        'icon': Icons.task_alt,
+        'date': _recordDate(task),
+      });
+    }
+
+    items.sort((a, b) {
+      return (b['date'] as DateTime)
+          .compareTo(a['date'] as DateTime);
+    });
+
+    return items.take(5).toList();
+  }
+
+  // --------------------------------------------------
+  // TASK COUNTS
+  // --------------------------------------------------
+
+  int get pendingTasks {
+    return tasks.where((task) {
+      final status =
+          (task['status'] ?? '').toString().toLowerCase();
+
+      return status == 'pending';
+    }).length;
+  }
+
+  int get completedTasks {
+    return tasks.where((task) {
+      final status =
+          (task['status'] ?? '').toString().toLowerCase();
+
+      return status == 'completed';
+    }).length;
+  }
+
+  // --------------------------------------------------
+  // ERROR VIEW
+  // --------------------------------------------------
+
+  Widget _errorView() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.cloud_off_outlined,
+              size: 44,
+              color: Colors.orange,
+            ),
+
+            const SizedBox(height: 12),
+
+            const Text(
+              'Unable to load dashboard data',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            Text(
+              loadError ?? 'An unexpected error occurred.',
+              textAlign: TextAlign.center,
+            ),
+
+            const SizedBox(height: 16),
+
+            ElevatedButton.icon(
+              onPressed: loadDashboardData,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Try Again'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --------------------------------------------------
+  // DASHBOARD UI
+  // --------------------------------------------------
+
   @override
   Widget build(BuildContext context) {
-    final firestore = FirebaseFirestore.instance;
     final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    final user = FirebaseAuth.instance.currentUser;
 
-    if (user == null) {
+    if (isLoading) {
       return const Center(
-        child: Text('Please log in to view the dashboard.'),
+        child: CircularProgressIndicator(),
       );
     }
 
-    // USER-SPECIFIC FIRESTORE STREAMS
+    if (loadError != null &&
+        customers.isEmpty &&
+        leads.isEmpty &&
+        tasks.isEmpty) {
+      return _errorView();
+    }
 
-    final customersStream = firestore
-        .collection('customers')
-        .where('userId', isEqualTo: user.uid)
-        .snapshots();
+    return RefreshIndicator(
+      onRefresh: loadDashboardData,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Dashboard Overview',
+              style: TextStyle(
+                fontSize: 27,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
 
-    final leadsStream = firestore
-        .collection('leads')
-        .where('userId', isEqualTo: user.uid)
-        .snapshots();
+            const SizedBox(height: 8),
 
-    final tasksStream = firestore
-        .collection('tasks')
-        .where('userId', isEqualTo: user.uid)
-        .snapshots();
+            Text(
+              'Welcome back! Here is your business summary.',
+              style: TextStyle(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
 
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: customersStream,
-      builder: (context, customerSnapshot) {
-        return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-          stream: leadsStream,
-          builder: (context, leadSnapshot) {
-            return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: tasksStream,
-              builder: (context, taskSnapshot) {
-                if (customerSnapshot.hasError ||
-                    leadSnapshot.hasError ||
-                    taskSnapshot.hasError) {
-                  return Center(
-                    child: Text(
-                      'Unable to load dashboard data.',
-                      style: TextStyle(color: colors.error),
+            if (loadError != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                'Some dashboard data could not be refreshed: '
+                '$loadError',
+                style: const TextStyle(
+                  color: Colors.orange,
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 25),
+
+            // LIVE STATISTICS GRID
+
+            LayoutBuilder(
+              builder: (context, box) {
+                final columns = box.maxWidth > 900
+                    ? 4
+                    : box.maxWidth > 500
+                        ? 2
+                        : 1;
+
+                return GridView.count(
+                  crossAxisCount: columns,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  shrinkWrap: true,
+                  physics:
+                      const NeverScrollableScrollPhysics(),
+                  childAspectRatio: 1.8,
+                  children: [
+                    statCard(
+                      context,
+                      'Total Customers',
+                      customers.length.toString(),
+                      Icons.people,
+                      _blue,
                     ),
-                  );
-                }
 
-                if (!customerSnapshot.hasData ||
-                    !leadSnapshot.hasData ||
-                    !taskSnapshot.hasData) {
-                  return const Center(
-                    child: CircularProgressIndicator(),
-                  );
-                }
+                    statCard(
+                      context,
+                      'Total Leads',
+                      leads.length.toString(),
+                      Icons.person_search,
+                      _orange,
+                    ),
 
-                // CURRENT USER RECORDS
+                    statCard(
+                      context,
+                      'Total Sales',
+                      'Not tracked',
+                      Icons.currency_rupee,
+                      _green,
+                    ),
 
-                final customers = customerSnapshot.data!.docs;
-                final leads = leadSnapshot.data!.docs;
-                final tasks = taskSnapshot.data!.docs;
+                    statCard(
+                      context,
+                      'Pending Tasks',
+                      pendingTasks.toString(),
+                      Icons.task_alt,
+                      _purple,
+                    ),
+                  ],
+                );
+              },
+            ),
 
-                // TASK COUNTS
+            const SizedBox(height: 25),
 
-                final pendingTasks = tasks.where((doc) {
-                  return doc.data()['status'] == 'Pending';
-                }).length;
+            // COMPLETED TASKS SUMMARY
 
-                final completedTasks = tasks.where((doc) {
-                  return doc.data()['status'] == 'Completed';
-                }).length;
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(18),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.check_circle_outline,
+                      color: Colors.green,
+                      size: 28,
+                    ),
 
-                final totalTasks = tasks.length;
+                    const SizedBox(width: 12),
 
-                final completionRate = totalTasks == 0
-                    ? 0.0
-                    : completedTasks / totalTasks;
-
-                // RECENT ACTIVITIES
-
-                final List<Map<String, dynamic>> activities = [];
-
-                for (final doc in customers) {
-                  final data = doc.data();
-
-                  activities.add({
-                    'title': 'New customer added',
-                    'subtitle': data['name'] ?? 'Customer',
-                    'icon': Icons.person_add,
-                    'date': data['createdAt'] is Timestamp
-                        ? data['createdAt']
-                        : Timestamp(0, 0),
-                  });
-                }
-
-                for (final doc in leads) {
-                  final data = doc.data();
-
-                  activities.add({
-                    'title': 'New lead added',
-                    'subtitle': data['name'] ?? 'Lead',
-                    'icon': Icons.trending_up,
-                    'date': data['createdAt'] is Timestamp
-                        ? data['createdAt']
-                        : Timestamp(0, 0),
-                  });
-                }
-
-                for (final doc in tasks) {
-                  final data = doc.data();
-
-                  activities.add({
-                    'title': 'Task: ${data['status'] ?? 'Updated'}',
-                    'subtitle': data['title'] ?? 'Task',
-                    'icon': Icons.task_alt,
-                    'date': data['createdAt'] is Timestamp
-                        ? data['createdAt']
-                        : Timestamp(0, 0),
-                  });
-                }
-
-                activities.sort((a, b) {
-                  final dateA = a['date'] as Timestamp;
-                  final dateB = b['date'] as Timestamp;
-                  return dateB.compareTo(dateA);
-                });
-
-                final recentActivities = activities.take(5).toList();
-
-                return SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // DASHBOARD HEADER
-
-                      Text(
-                        'Dashboard Overview',
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 25,
-                        ),
-                      ),
-
-                      const SizedBox(height: 5),
-
-                      Text(
-                        'Welcome back! Here is your business summary.',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colors.onSurfaceVariant,
-                        ),
-                      ),
-
-                      const SizedBox(height: 18),
-
-                      // STATISTICS GRID
-
-                      LayoutBuilder(
-                        builder: (context, box) {
-                          final columns = box.maxWidth > 1000
-                              ? 4
-                              : box.maxWidth > 600
-                                  ? 2
-                                  : 2;
-
-                          return GridView.count(
-                            crossAxisCount: columns,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                            shrinkWrap: true,
-                            physics:
-                                const NeverScrollableScrollPhysics(),
-                            childAspectRatio:
-                                box.maxWidth < 400 ? 1.15 : 1.55,
-                            children: [
-                              statCard(
-                                context,
-                                'Total Customers',
-                                customers.length.toString(),
-                                Icons.people,
-                                Colors.blue,
-                              ),
-                              statCard(
-                                context,
-                                'Total Leads',
-                                leads.length.toString(),
-                                Icons.person_search,
-                                Colors.orange,
-                              ),
-                              statCard(
-                                context,
-                                'Total Sales',
-                                'Not tracked',
-                                Icons.currency_rupee,
-                                Colors.green,
-                              ),
-                              statCard(
-                                context,
-                                'Pending Tasks',
-                                pendingTasks.toString(),
-                                Icons.task_alt,
-                                Colors.purple,
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      // TASK COMPLETION SUMMARY
-
-                      Card(
-                        margin: EdgeInsets.zero,
-                        child: Padding(
-                          padding: const EdgeInsets.all(15),
-                          child: Column(
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.check_circle_outline,
-                                    color: Colors.green,
-                                    size: 25,
-                                  ),
-
-                                  const SizedBox(width: 10),
-
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Completed Tasks',
-                                          style: theme.textTheme.bodySmall
-                                              ?.copyWith(
-                                            color:
-                                                colors.onSurfaceVariant,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 3),
-                                        Text(
-                                          '$completedTasks of $totalTasks',
-                                          style: theme.textTheme.titleLarge
-                                              ?.copyWith(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                                  Text(
-                                    '${(completionRate * 100).toStringAsFixed(0)}%',
-                                    style: theme.textTheme.titleMedium
-                                        ?.copyWith(
-                                      color: colors.primary,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-
-                              const SizedBox(height: 12),
-
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: LinearProgressIndicator(
-                                  value: completionRate,
-                                  minHeight: 8,
-                                  backgroundColor:
-                                      colors.surfaceContainerHighest,
-                                  valueColor:
-                                      AlwaysStoppedAnimation<Color>(
-                                    colors.primary,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // RECENT ACTIVITIES HEADER
-
-                      Row(
-                        mainAxisAlignment:
-                            MainAxisAlignment.spaceBetween,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment:
+                            CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Recent Activities',
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 19,
+                            'Completed Tasks',
+                            style: TextStyle(
+                              color: theme.colorScheme
+                                  .onSurfaceVariant,
                             ),
                           ),
+
+                          const SizedBox(height: 4),
+
                           Text(
-                            '${recentActivities.length} recent',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colors.onSurfaceVariant,
+                            completedTasks.toString(),
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ],
                       ),
+                    ),
 
-                      const SizedBox(height: 10),
-
-                      // RECENT ACTIVITIES LIST
-
-                      Card(
-                        margin: EdgeInsets.zero,
-                        clipBehavior: Clip.antiAlias,
-                        child: activities.isEmpty
-                            ? const Padding(
-                                padding: EdgeInsets.all(22),
-                                child: Center(
-                                  child: Text(
-                                    'No recent activities found.',
-                                  ),
-                                ),
-                              )
-                            : Column(
-                                children: [
-                                  for (
-                                    int i = 0;
-                                    i < recentActivities.length;
-                                    i++
-                                  ) ...[
-                                    activity(
-                                      context,
-                                      recentActivities[i]['title']
-                                          as String,
-                                      recentActivities[i]['subtitle']
-                                          as String,
-                                      recentActivities[i]['icon']
-                                          as IconData,
-                                    ),
-                                    if (i !=
-                                        recentActivities.length - 1)
-                                      const Divider(
-                                        height: 1,
-                                        indent: 60,
-                                      ),
-                                  ],
-                                ],
-                              ),
+                    Text(
+                      '${tasks.length} Total Tasks',
+                      style: TextStyle(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w600,
                       ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
 
-                      const SizedBox(height: 16),
-                    ],
-                  ),
-                );
-              },
-            );
-          },
-        );
-      },
+            const SizedBox(height: 30),
+
+            // RECENT ACTIVITIES
+
+            const Text(
+              'Recent Activities',
+              style: TextStyle(
+                fontSize: 21,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(height: 15),
+
+            Card(
+              child: recentActivities.isEmpty
+                  ? const Padding(
+                      padding: EdgeInsets.all(25),
+                      child: Center(
+                        child: Text(
+                          'No recent activities found.',
+                        ),
+                      ),
+                    )
+                  : Column(
+                      children: [
+                        for (int i = 0;
+                            i < recentActivities.length;
+                            i++) ...[
+                          activity(
+                            context,
+                            recentActivities[i]['title']
+                                as String,
+                            recentActivities[i]['subtitle']
+                                as String,
+                            recentActivities[i]['icon']
+                                as IconData,
+                          ),
+
+                          if (i != recentActivities.length - 1)
+                            const Divider(height: 1),
+                        ],
+                      ],
+                    ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

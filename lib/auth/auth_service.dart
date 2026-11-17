@@ -14,7 +14,7 @@ class AuthService {
 
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  // PHP API URL based on the platform.
+  // PHP API base URL
   String get _apiBaseUrl {
     if (kIsWeb) {
       return 'http://localhost/business_crm_api';
@@ -27,12 +27,32 @@ class AuthService {
     return 'http://localhost/business_crm_api';
   }
 
-  // Synchronize Firebase user with MySQL through PHP.
-  Future<void> _syncUserWithBackend(User user) async {
-    final idToken = await user.getIdToken();
+  // Get a fresh Firebase ID token
+  Future<String> getFreshIdToken() async {
+    final user = _auth.currentUser;
+
+    if (user == null) {
+      throw Exception('Please log in first.');
+    }
+
+    final idToken = await user.getIdToken(true);
 
     if (idToken == null || idToken.isEmpty) {
-      throw Exception('Unable to obtain Firebase authentication token.');
+      throw Exception('Unable to generate Firebase ID token.');
+    }
+
+    return idToken;
+  }
+
+  // Synchronize Firebase user with PHP/MySQL backend
+  Future<void> _syncUserWithBackend(
+    User user, {
+    String? existingToken,
+  }) async {
+    final idToken = existingToken ?? await user.getIdToken(true);
+
+    if (idToken == null || idToken.isEmpty) {
+      throw Exception('Firebase ID token is empty.');
     }
 
     final uri = Uri.parse(
@@ -50,17 +70,33 @@ class AuthService {
         )
         .timeout(const Duration(seconds: 20));
 
-    final Map<String, dynamic> result =
-        jsonDecode(response.body) as Map<String, dynamic>;
+    Map<String, dynamic> responseData;
 
-    if (response.statusCode != 200 || result['success'] != true) {
+    try {
+      final decoded = jsonDecode(response.body);
+
+      if (decoded is! Map<String, dynamic>) {
+        throw const FormatException('Unexpected response format.');
+      }
+
+      responseData = decoded;
+    } catch (_) {
       throw Exception(
-        result['message'] ?? 'MySQL user synchronization failed.',
+        'Invalid response received from PHP backend. '
+        'HTTP Status: ${response.statusCode}',
+      );
+    }
+
+    if (response.statusCode != 200 ||
+        responseData['success'] != true) {
+      throw Exception(
+        responseData['message']?.toString() ??
+            'Failed to synchronize user with backend.',
       );
     }
   }
 
-  // REGISTER
+  // Register a new user
   Future<UserCredential> register({
     required String name,
     required String email,
@@ -75,7 +111,7 @@ class AuthService {
       final user = credential.user;
 
       if (user == null) {
-        throw Exception('Account creation failed. Please try again.');
+        throw Exception('User registration failed.');
       }
 
       await user.updateDisplayName(name.trim());
@@ -84,36 +120,42 @@ class AuthService {
       final updatedUser = _auth.currentUser;
 
       if (updatedUser == null) {
-        throw Exception('Unable to retrieve the registered user.');
+        throw Exception('Unable to load registered user.');
       }
 
-      // Preserve the existing Firestore profile.
+      // Save user details in Firestore
       await _firestore.collection('users').doc(updatedUser.uid).set({
         'uid': updatedUser.uid,
         'name': name.trim(),
-        'email': updatedUser.email,
+        'email': email.trim(),
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      });
 
-      // Synchronize the user with MySQL.
-      await _syncUserWithBackend(updatedUser);
+      // Generate a fresh Firebase ID token
+      final idToken = await updatedUser.getIdToken(true);
+
+      if (idToken == null || idToken.isEmpty) {
+        throw Exception('Unable to generate Firebase ID token.');
+      }
+
+      // Synchronize user with PHP/MySQL
+      await _syncUserWithBackend(
+        updatedUser,
+        existingToken: idToken,
+      );
 
       return credential;
     } on FirebaseAuthException catch (e) {
       throw Exception(_handleAuthError(e));
-    } catch (e) {
-      throw Exception(
-        'Registration failed: ${e.toString().replaceFirst('Exception: ', '')}',
-      );
     }
   }
 
-  // LOGIN
-  Future<UserCredential> login(
-    String email,
-    String password,
-  ) async {
+  // Login an existing user
+  Future<UserCredential> login({
+    required String email,
+    required String password,
+  }) async {
     try {
       final credential = await _auth.signInWithEmailAndPassword(
         email: email.trim(),
@@ -123,11 +165,21 @@ class AuthService {
       final user = credential.user;
 
       if (user == null) {
-        throw Exception('Login failed. Please try again.');
+        throw Exception('Login failed. User not found.');
       }
 
-      // Synchronize the user with MySQL after login.
-      await _syncUserWithBackend(user);
+      // Generate a fresh Firebase ID token
+      final idToken = await user.getIdToken(true);
+
+      if (idToken == null || idToken.isEmpty) {
+        throw Exception('Unable to generate Firebase ID token.');
+      }
+
+      // Synchronize user with PHP/MySQL
+      await _syncUserWithBackend(
+        user,
+        existingToken: idToken,
+      );
 
       return credential;
     } on FirebaseAuthException catch (e) {
@@ -135,8 +187,10 @@ class AuthService {
     }
   }
 
-  // FORGOT PASSWORD
-  Future<void> forgotPassword(String email) async {
+  // Forgot password
+  Future<void> forgotPassword({
+    required String email,
+  }) async {
     try {
       await _auth.sendPasswordResetEmail(
         email: email.trim(),
@@ -146,7 +200,7 @@ class AuthService {
     }
   }
 
-  // SEND EMAIL VERIFICATION
+  // Send email verification
   Future<void> sendEmailVerification() async {
     try {
       final user = _auth.currentUser;
@@ -155,61 +209,71 @@ class AuthService {
         throw Exception('Please log in first.');
       }
 
-      if (user.emailVerified) {
-        throw Exception('Your email is already verified.');
+      if (!user.emailVerified) {
+        await user.sendEmailVerification();
       }
-
-      await user.sendEmailVerification();
     } on FirebaseAuthException catch (e) {
       throw Exception(_handleAuthError(e));
     }
   }
 
-  // CHECK EMAIL VERIFICATION STATUS
+  // Check email verification status
   Future<bool> checkEmailVerification() async {
-    await _auth.currentUser?.reload();
+    try {
+      final user = _auth.currentUser;
 
-    return _auth.currentUser?.emailVerified ?? false;
+      if (user == null) {
+        return false;
+      }
+
+      await user.reload();
+
+      final updatedUser = _auth.currentUser;
+
+      return updatedUser?.emailVerified ?? false;
+    } on FirebaseAuthException catch (e) {
+      throw Exception(_handleAuthError(e));
+    }
   }
 
-  // LOGOUT
+  // Logout
   Future<void> logout() async {
     await _auth.signOut();
   }
 
-  // FIREBASE ERROR HANDLING
+  // Handle Firebase authentication errors
   String _handleAuthError(FirebaseAuthException e) {
     switch (e.code) {
       case 'email-already-in-use':
-        return 'This email is already registered.';
+        return 'This email address is already registered.';
 
       case 'invalid-email':
         return 'Please enter a valid email address.';
 
       case 'weak-password':
-        return 'Password is too weak. Use at least 6 characters.';
+        return 'Password is too weak. Please use a stronger password.';
 
       case 'user-not-found':
-        return 'No account found with this email.';
+        return 'No account found with this email address.';
 
       case 'wrong-password':
       case 'invalid-credential':
-        return 'Incorrect email or password.';
+        return 'Invalid email or password.';
 
       case 'user-disabled':
         return 'This account has been disabled.';
 
-      case 'network-request-failed':
-        return 'Network error. Check your internet connection.';
-
       case 'too-many-requests':
         return 'Too many attempts. Please try again later.';
 
+      case 'network-request-failed':
+        return 'Network error. Please check your internet connection.';
+
       case 'operation-not-allowed':
-        return 'This authentication method is not enabled in Firebase.';
+        return 'This authentication method is not enabled.';
 
       default:
-        return e.message ?? 'Something went wrong. Please try again.';
+        return e.message ?? 'Authentication failed. Please try again.';
     }
   }
 }

@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 
 import '../auth/auth_service.dart';
@@ -36,7 +37,7 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // LOGIN - EXISTING FIREBASE AUTHENTICATION
+  // LOGIN - FIREBASE AUTHENTICATION
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) {
@@ -49,8 +50,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final credential = await _authService.login(
-        _emailController.text.trim(),
-        _passwordController.text,
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
       );
 
       debugPrint('LOGIN SUCCESS: ${credential.user?.uid}');
@@ -100,14 +101,20 @@ class _LoginScreenState extends State<LoginScreen> {
       suffixIcon: suffix,
       filled: true,
       fillColor: const Color(0xFF1A241D),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 19),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 18,
+        vertical: 19,
+      ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(15),
         borderSide: const BorderSide(color: Color(0xFF29382E)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(15),
-        borderSide: const BorderSide(color: primaryGreen, width: 1.5),
+        borderSide: const BorderSide(
+          color: primaryGreen,
+          width: 1.5,
+        ),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(15),
@@ -137,7 +144,8 @@ class _LoginScreenState extends State<LoginScreen> {
           return 'Please enter your email';
         }
 
-        if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value.trim())) {
+        if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+            .hasMatch(value.trim())) {
           return 'Enter a valid email address';
         }
 
@@ -219,9 +227,7 @@ class _LoginScreenState extends State<LoginScreen> {
             size: 42,
           ),
         ),
-
         const SizedBox(height: 20),
-
         const Text(
           'BUSINESS CRM',
           style: TextStyle(
@@ -231,12 +237,14 @@ class _LoginScreenState extends State<LoginScreen> {
             letterSpacing: 2,
           ),
         ),
-
         const SizedBox(height: 8),
-
         const Text(
           'Manage smarter. Grow faster.',
-          style: TextStyle(color: mutedText, fontSize: 14, letterSpacing: 0.5),
+          style: TextStyle(
+            color: mutedText,
+            fontSize: 14,
+            letterSpacing: 0.5,
+          ),
         ),
       ],
     );
@@ -274,7 +282,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   Text(
                     'Sign In',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   SizedBox(width: 10),
                   Icon(Icons.arrow_forward_rounded),
@@ -291,22 +302,27 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 25),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24,
+              vertical: 25,
+            ),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 430),
               child: Column(
                 children: [
                   _buildHeader(),
-
                   const SizedBox(height: 38),
 
                   // LOGIN CARD
+
                   Container(
                     padding: const EdgeInsets.all(23),
                     decoration: BoxDecoration(
                       color: cardColor,
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: const Color(0xFF26372C)),
+                      border: Border.all(
+                        color: const Color(0xFF26372C),
+                      ),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.25),
@@ -328,16 +344,15 @@ class _LoginScreenState extends State<LoginScreen> {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-
                           const SizedBox(height: 8),
-
                           const Text(
                             'Sign in to access your workspace.',
-                            style: TextStyle(color: mutedText, fontSize: 14),
+                            style: TextStyle(
+                              color: mutedText,
+                              fontSize: 14,
+                            ),
                           ),
-
                           const SizedBox(height: 28),
-
                           const Text(
                             'EMAIL ADDRESS',
                             style: TextStyle(
@@ -347,13 +362,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               letterSpacing: 1.2,
                             ),
                           ),
-
                           const SizedBox(height: 9),
-
                           _buildEmailField(),
-
                           const SizedBox(height: 21),
-
                           const Text(
                             'PASSWORD',
                             style: TextStyle(
@@ -363,12 +374,11 @@ class _LoginScreenState extends State<LoginScreen> {
                               letterSpacing: 1.2,
                             ),
                           ),
-
                           const SizedBox(height: 9),
-
                           _buildPasswordField(),
-
                           const SizedBox(height: 5),
+
+                          // FORGOT PASSWORD
 
                           Align(
                             alignment: Alignment.centerRight,
@@ -395,9 +405,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
 
                           const SizedBox(height: 15),
-
                           _buildLoginButton(),
-
                           const SizedBox(height: 23),
 
                           Row(
@@ -440,7 +448,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 ),
                               ),
-
                               TextButton(
                                 onPressed: _isLoading
                                     ? null
@@ -481,7 +488,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       SizedBox(width: 7),
                       Text(
                         'Secure access to your business workspace',
-                        style: TextStyle(color: mutedText, fontSize: 11),
+                        style: TextStyle(
+                          color: mutedText,
+                          fontSize: 11,
+                        ),
                       ),
                     ],
                   ),

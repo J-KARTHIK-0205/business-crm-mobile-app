@@ -1,3 +1,4 @@
+
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -18,6 +19,32 @@ class _ReportsScreenState extends State<ReportsScreen> {
   static const background = Color(0xFF080C09);
   static const card = Color(0xFF121A15);
   static const muted = Color(0xFF9AA69D);
+
+  bool get isDark =>
+      Theme.of(context).brightness == Brightness.dark;
+
+  Color get pageBackground =>
+      isDark ? background : const Color(0xFFF5F7FA);
+
+  Color get cardBackground =>
+      isDark ? card : Colors.white;
+
+  Color get primaryText =>
+      isDark ? Colors.white : const Color(0xFF17211B);
+
+  Color get secondaryText =>
+      isDark ? muted : const Color(0xFF65736A);
+
+  Color get borderColor =>
+      isDark
+          ? Colors.white.withValues(alpha: 0.08)
+          : const Color(0xFFE1E8E3);
+
+  Color get dividerColor =>
+      isDark ? Colors.white12 : const Color(0xFFE5EAE7);
+
+  Color get progressBackground =>
+      isDark ? Colors.white12 : const Color(0xFFE5EAE7);
 
   bool isLoading = true;
   String? errorMessage;
@@ -48,6 +75,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
     loadReports();
   }
 
+  // -----------------------------------------------------
+  // AUTHENTICATION HEADERS
+  // -----------------------------------------------------
+
   Future<Map<String, String>> getHeaders() async {
     final user = FirebaseAuth.instance.currentUser;
 
@@ -58,57 +89,97 @@ class _ReportsScreenState extends State<ReportsScreen> {
     final token = await user.getIdToken();
 
     if (token == null || token.isEmpty) {
-      throw Exception('Unable to get Firebase authentication token.');
+      throw Exception(
+        'Unable to generate Firebase authentication token.',
+      );
     }
 
     return {
       'Accept': 'application/json',
+      'Content-Type': 'application/json',
       'Authorization': 'Bearer $token',
     };
   }
 
-  Future<List<Map<String, dynamic>>> fetchRecords(String url) async {
+  // -----------------------------------------------------
+  // NORMALIZE STATUS VALUES
+  // -----------------------------------------------------
+
+  String normalizeStatus(dynamic value) {
+    return value?.toString().trim().toLowerCase() ?? '';
+  }
+
+  // -----------------------------------------------------
+  // FETCH API RECORDS
+  // -----------------------------------------------------
+
+  Future<List<Map<String, dynamic>>> fetchRecords(
+    String url,
+    Map<String, String> headers,
+  ) async {
     final response = await http
         .get(
           Uri.parse(url),
-          headers: await getHeaders(),
+          headers: headers,
         )
         .timeout(const Duration(seconds: 20));
 
-    final decoded = jsonDecode(response.body);
+    dynamic decoded;
+
+    try {
+      decoded = jsonDecode(response.body);
+    } catch (_) {
+      throw Exception(
+        'Invalid response received from the server.',
+      );
+    }
 
     if (decoded is! Map<String, dynamic>) {
-      throw Exception('Invalid server response.');
+      throw Exception('Unexpected server response.');
     }
 
     if (response.statusCode < 200 ||
         response.statusCode >= 300 ||
         decoded['success'] != true) {
       throw Exception(
-        decoded['message'] ?? 'Unable to load report data.',
+        decoded['message']?.toString() ??
+            'Unable to load report data.',
       );
     }
 
     final data = decoded['data'];
 
     if (data is! List) {
-      throw Exception('Invalid records received from server.');
+      throw Exception(
+        'Invalid records received from the server.',
+      );
     }
 
     return data
         .whereType<Map>()
-        .map((item) => Map<String, dynamic>.from(item))
+        .map(
+          (item) => Map<String, dynamic>.from(item),
+        )
         .toList();
   }
 
+  // -----------------------------------------------------
+  // LOAD ALL REPORT DATA
+  // -----------------------------------------------------
+
   Future<void> loadReports() async {
     if (FirebaseAuth.instance.currentUser == null) {
+      if (!mounted) return;
+
       setState(() {
         isLoading = false;
         errorMessage = 'Please log in to view reports.';
       });
+
       return;
     }
+
+    if (!mounted) return;
 
     setState(() {
       isLoading = true;
@@ -116,11 +187,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
     });
 
     try {
+      final headers = await getHeaders();
+
       final results = await Future.wait([
-        fetchRecords(endpoints['customers']!),
-        fetchRecords(endpoints['leads']!),
-        fetchRecords(endpoints['organizations']!),
-        fetchRecords(endpoints['tasks']!),
+        fetchRecords(endpoints['customers']!, headers),
+        fetchRecords(endpoints['leads']!, headers),
+        fetchRecords(endpoints['organizations']!, headers),
+        fetchRecords(endpoints['tasks']!, headers),
       ]);
 
       if (!mounted) return;
@@ -130,7 +203,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
         leads = results[1];
         organizations = results[2];
         tasks = results[3];
+
         isLoading = false;
+        errorMessage = null;
       });
     } catch (error) {
       if (!mounted) return;
@@ -143,15 +218,25 @@ class _ReportsScreenState extends State<ReportsScreen> {
     }
   }
 
+  // -----------------------------------------------------
+  // LEAD STATISTICS
+  // -----------------------------------------------------
+
   int leadCount(String status) {
     return leads.where((lead) {
-      return lead['status']?.toString() == status;
+      return normalizeStatus(lead['status']) ==
+          normalizeStatus(status);
     }).length;
   }
 
+  // -----------------------------------------------------
+  // TASK STATISTICS
+  // -----------------------------------------------------
+
   int taskCount(String status) {
     return tasks.where((task) {
-      return task['status']?.toString() == status;
+      return normalizeStatus(task['status']) ==
+          normalizeStatus(status);
     }).length;
   }
 
@@ -163,12 +248,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   double get completionRate {
     if (tasks.isEmpty) return 0;
+
     return completedTasks / tasks.length;
   }
 
-  // ---------------------------------------------------------------------------
+  // -----------------------------------------------------
   // STATISTICS CARD
-  // ---------------------------------------------------------------------------
+  // -----------------------------------------------------
 
   Widget buildStatCard(
     String title,
@@ -179,11 +265,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
     return Container(
       padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
-        color: card,
+        color: cardBackground,
         borderRadius: BorderRadius.circular(17),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.06),
-        ),
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -195,8 +279,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
           const SizedBox(height: 15),
           Text(
             value,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: primaryText,
               fontSize: 26,
               fontWeight: FontWeight.bold,
             ),
@@ -204,8 +288,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
           const SizedBox(height: 5),
           Text(
             title,
-            style: const TextStyle(
-              color: muted,
+            style: TextStyle(
+              color: secondaryText,
               fontSize: 12,
             ),
           ),
@@ -219,8 +303,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
       padding: const EdgeInsets.only(bottom: 18),
       child: Text(
         title,
-        style: const TextStyle(
-          color: Colors.white,
+        style: TextStyle(
+          color: primaryText,
           fontSize: 18,
           fontWeight: FontWeight.bold,
         ),
@@ -228,9 +312,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
+  // -----------------------------------------------------
   // LEAD STATUS ANALYSIS
-  // ---------------------------------------------------------------------------
+  // -----------------------------------------------------
 
   Widget buildProgressItem(
     String title,
@@ -250,16 +334,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: primaryText,
                     fontSize: 13,
                   ),
                 ),
               ),
               Text(
                 '$count',
-                style: const TextStyle(
-                  color: muted,
+                style: TextStyle(
+                  color: secondaryText,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -271,7 +355,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             child: LinearProgressIndicator(
               value: progress.clamp(0.0, 1.0).toDouble(),
               minHeight: 10,
-              backgroundColor: Colors.white12,
+              backgroundColor: progressBackground,
               valueColor: AlwaysStoppedAnimation<Color>(color),
             ),
           ),
@@ -284,8 +368,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: card,
+        color: cardBackground,
         borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -326,9 +411,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
+  // -----------------------------------------------------
   // TASK COMPLETION ANALYSIS
-  // ---------------------------------------------------------------------------
+  // -----------------------------------------------------
 
   Widget buildTaskChart() {
     final percentage = (completionRate * 100).round();
@@ -336,21 +421,19 @@ class _ReportsScreenState extends State<ReportsScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: card,
+        color: cardBackground,
         borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           buildSectionTitle('Task Completion Analysis'),
-
           Text(
             '$completedTasks of ${tasks.length} tasks completed',
-            style: const TextStyle(color: muted),
+            style: TextStyle(color: secondaryText),
           ),
-
           const SizedBox(height: 22),
-
           Center(
             child: SizedBox(
               width: 155,
@@ -362,9 +445,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     width: 145,
                     height: 145,
                     child: CircularProgressIndicator(
-                      value: completionRate,
+                      value: completionRate.clamp(0.0, 1.0),
                       strokeWidth: 13,
-                      backgroundColor: Colors.white12,
+                      backgroundColor: progressBackground,
                       valueColor:
                           const AlwaysStoppedAnimation<Color>(green),
                     ),
@@ -374,15 +457,15 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     children: [
                       Text(
                         '$percentage%',
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: primaryText,
                           fontSize: 27,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const Text(
+                      Text(
                         'Completed',
-                        style: TextStyle(color: muted),
+                        style: TextStyle(color: secondaryText),
                       ),
                     ],
                   ),
@@ -390,9 +473,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               ),
             ),
           ),
-
           const SizedBox(height: 24),
-
           taskStatusRow('Completed', completedTasks, green),
           taskStatusRow('In Progress', inProgressTasks, Colors.blue),
           taskStatusRow('Pending', pendingTasks, Colors.orange),
@@ -401,7 +482,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  Widget taskStatusRow(String title, int count, Color color) {
+  Widget taskStatusRow(
+    String title,
+    int count,
+    Color color,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 7),
       child: Row(
@@ -418,16 +503,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(
-                color: muted,
+              style: TextStyle(
+                color: secondaryText,
                 fontSize: 13,
               ),
             ),
           ),
           Text(
             '$count',
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: primaryText,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -436,9 +521,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
+  // -----------------------------------------------------
   // BUSINESS SUMMARY
-  // ---------------------------------------------------------------------------
+  // -----------------------------------------------------
 
   Widget summaryRow(
     String title,
@@ -451,23 +536,23 @@ class _ReportsScreenState extends State<ReportsScreen> {
         children: [
           Icon(
             icon,
-            color: accent,
+            color: isDark ? accent : green,
             size: 21,
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(
-                color: muted,
+              style: TextStyle(
+                color: secondaryText,
                 fontSize: 13,
               ),
             ),
           ),
           Text(
             value,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: primaryText,
               fontWeight: FontWeight.bold,
               fontSize: 15,
             ),
@@ -481,8 +566,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: card,
+        color: cardBackground,
         borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -493,37 +579,37 @@ class _ReportsScreenState extends State<ReportsScreen> {
             '${customers.length}',
             Icons.people_outline,
           ),
-          const Divider(color: Colors.white12),
+          Divider(color: dividerColor),
           summaryRow(
             'Total Leads',
             '${leads.length}',
             Icons.person_search,
           ),
-          const Divider(color: Colors.white12),
+          Divider(color: dividerColor),
           summaryRow(
             'Total Organizations',
             '${organizations.length}',
             Icons.business_outlined,
           ),
-          const Divider(color: Colors.white12),
+          Divider(color: dividerColor),
           summaryRow(
             'Total Tasks',
             '${tasks.length}',
             Icons.task_alt,
           ),
-          const Divider(color: Colors.white12),
+          Divider(color: dividerColor),
           summaryRow(
             'Completed Tasks',
             '$completedTasks',
             Icons.check_circle_outline,
           ),
-          const Divider(color: Colors.white12),
+          Divider(color: dividerColor),
           summaryRow(
             'In Progress Tasks',
             '$inProgressTasks',
             Icons.timelapse,
           ),
-          const Divider(color: Colors.white12),
+          Divider(color: dividerColor),
           summaryRow(
             'Pending Tasks',
             '$pendingTasks',
@@ -534,17 +620,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
+  // -----------------------------------------------------
   // MAIN SCREEN
-  // ---------------------------------------------------------------------------
+  // -----------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
     if (FirebaseAuth.instance.currentUser == null) {
-      return const Center(
+      return Center(
         child: Text(
           'Please log in to view reports.',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: primaryText),
         ),
       );
     }
@@ -571,7 +657,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               Text(
                 errorMessage!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: muted),
+                style: TextStyle(color: secondaryText),
               ),
               const SizedBox(height: 18),
               FilledButton.icon(
@@ -589,137 +675,129 @@ class _ReportsScreenState extends State<ReportsScreen> {
       );
     }
 
-    return RefreshIndicator(
-      color: green,
-      onRefresh: loadReports,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(bottom: 25),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Reports & Analytics',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 25,
-                fontWeight: FontWeight.bold,
+    return Container(
+      color: pageBackground,
+      child: RefreshIndicator(
+        color: green,
+        onRefresh: loadReports,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.only(bottom: 25),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Reports & Analytics',
+                style: TextStyle(
+                  color: primaryText,
+                  fontSize: 25,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-
-            const SizedBox(height: 7),
-
-            const Text(
-              'Monitor your business performance and activities.',
-              style: TextStyle(
-                color: muted,
-                fontSize: 13,
+              const SizedBox(height: 7),
+              Text(
+                'Monitor your business performance and activities.',
+                style: TextStyle(
+                  color: secondaryText,
+                  fontSize: 13,
+                ),
               ),
-            ),
-
-            const SizedBox(height: 22),
-
-            Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Overview',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
+              const SizedBox(height: 22),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Overview',
+                      style: TextStyle(
+                        color: primaryText,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
                     ),
                   ),
-                ),
-                IconButton(
-                  tooltip: 'Refresh reports',
-                  onPressed: loadReports,
-                  icon: const Icon(
-                    Icons.refresh,
-                    color: accent,
+                  IconButton(
+                    tooltip: 'Refresh reports',
+                    onPressed: loadReports,
+                    icon: Icon(
+                      Icons.refresh,
+                      color: isDark ? accent : green,
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+              const SizedBox(height: 10),
 
-            const SizedBox(height: 10),
+              // Statistics cards.
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final columns =
+                      constraints.maxWidth > 850 ? 4 : 2;
 
-            // Statistics cards.
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final columns = constraints.maxWidth > 850
-                    ? 4
-                    : constraints.maxWidth > 500
-                        ? 2
-                        : 2;
-
-                return GridView.count(
-                  crossAxisCount: columns,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  childAspectRatio: 1.35,
-                  children: [
-                    buildStatCard(
-                      'Customers',
-                      '${customers.length}',
-                      Icons.people_outline,
-                      Colors.blue,
-                    ),
-                    buildStatCard(
-                      'Leads',
-                      '${leads.length}',
-                      Icons.person_search,
-                      Colors.orange,
-                    ),
-                    buildStatCard(
-                      'Organizations',
-                      '${organizations.length}',
-                      Icons.business_outlined,
-                      Colors.purple,
-                    ),
-                    buildStatCard(
-                      'Tasks',
-                      '${tasks.length}',
-                      Icons.task_alt,
-                      green,
-                    ),
-                  ],
-                );
-              },
-            ),
-
-            const SizedBox(height: 22),
-
-            // Analysis sections.
-            LayoutBuilder(
-              builder: (context, constraints) {
-                if (constraints.maxWidth > 850) {
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  return GridView.count(
+                    crossAxisCount: columns,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    childAspectRatio: 1.35,
                     children: [
-                      Expanded(child: buildLeadChart()),
-                      const SizedBox(width: 15),
-                      Expanded(child: buildTaskChart()),
+                      buildStatCard(
+                        'Customers',
+                        '${customers.length}',
+                        Icons.people_outline,
+                        Colors.blue,
+                      ),
+                      buildStatCard(
+                        'Leads',
+                        '${leads.length}',
+                        Icons.person_search,
+                        Colors.orange,
+                      ),
+                      buildStatCard(
+                        'Organizations',
+                        '${organizations.length}',
+                        Icons.business_outlined,
+                        Colors.purple,
+                      ),
+                      buildStatCard(
+                        'Tasks',
+                        '${tasks.length}',
+                        Icons.task_alt,
+                        green,
+                      ),
                     ],
                   );
-                }
+                },
+              ),
+              const SizedBox(height: 22),
 
-                return Column(
-                  children: [
-                    buildLeadChart(),
-                    const SizedBox(height: 16),
-                    buildTaskChart(),
-                  ],
-                );
-              },
-            ),
+              // Analysis sections.
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  if (constraints.maxWidth > 850) {
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: buildLeadChart()),
+                        const SizedBox(width: 15),
+                        Expanded(child: buildTaskChart()),
+                      ],
+                    );
+                  }
 
-            const SizedBox(height: 18),
-
-            buildBusinessSummary(),
-          ],
+                  return Column(
+                    children: [
+                      buildLeadChart(),
+                      const SizedBox(height: 16),
+                      buildTaskChart(),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 18),
+              buildBusinessSummary(),
+            ],
+          ),
         ),
       ),
     );

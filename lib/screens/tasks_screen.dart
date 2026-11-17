@@ -34,6 +34,28 @@ class _TasksScreenState extends State<TasksScreen> {
   static const muted = Color(0xFF9AA69D);
   static const card = Color(0xFF121A15);
 
+  bool get isDark => Theme.of(context).brightness == Brightness.dark;
+
+  Color get surfaceColor =>
+      isDark ? card : Theme.of(context).colorScheme.surface;
+
+  Color get primaryText =>
+      Theme.of(context).colorScheme.onSurface;
+
+  Color get secondaryText => isDark
+      ? muted
+      : Theme.of(context).colorScheme.onSurfaceVariant;
+
+  Color get borderColor => isDark
+      ? Colors.white.withValues(alpha: 0.07)
+      : Theme.of(context).colorScheme.outline.withValues(alpha: 0.25);
+
+  Color get inputColor =>
+      isDark ? const Color(0xFF1A241D) : surfaceColor;
+
+  Color get accentText =>
+      isDark ? const Color(0xFF69F0AE) : const Color(0xFF087A3B);
+
   final statuses = ['All', 'Pending', 'In Progress', 'Completed'];
 
   String get baseUrl {
@@ -60,6 +82,10 @@ class _TasksScreenState extends State<TasksScreen> {
     searchController.dispose();
     super.dispose();
   }
+
+  // =====================================================
+  // API HELPERS
+  // =====================================================
 
   Future<Map<String, String>> getHeaders() async {
     final current = user;
@@ -200,7 +226,10 @@ class _TasksScreenState extends State<TasksScreen> {
     }
   }
 
-  // Add or update a task.
+  // =====================================================
+  // ADD / UPDATE TASK
+  // =====================================================
+
   Future<String?> saveTask(
     Map<String, dynamic> task, {
     String? id,
@@ -252,19 +281,22 @@ class _TasksScreenState extends State<TasksScreen> {
     }
   }
 
-  // Delete a task.
+  // =====================================================
+  // DELETE TASK
+  // =====================================================
+
   Future<void> deleteTask(String id) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: card,
-        title: const Text(
+        backgroundColor: surfaceColor,
+        title: Text(
           'Delete Task?',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: primaryText),
         ),
-        content: const Text(
+        content: Text(
           'Are you sure you want to delete this task?',
-          style: TextStyle(color: muted),
+          style: TextStyle(color: secondaryText),
         ),
         actions: [
           TextButton(
@@ -315,7 +347,10 @@ class _TasksScreenState extends State<TasksScreen> {
     }
   }
 
-  // Open Add/Edit Task dialog.
+  // =====================================================
+  // ADD / EDIT TASK DIALOG
+  // =====================================================
+
   Future<void> showTaskDialog({
     String? id,
     Map<String, dynamic>? data,
@@ -349,6 +384,10 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
+  // =====================================================
+  // COLORS AND UI HELPERS
+  // =====================================================
+
   Color priorityColor(String priority) {
     switch (priority) {
       case 'High':
@@ -356,7 +395,7 @@ class _TasksScreenState extends State<TasksScreen> {
       case 'Medium':
         return Colors.orange;
       default:
-        return green;
+        return accentText;
     }
   }
 
@@ -376,11 +415,9 @@ class _TasksScreenState extends State<TasksScreen> {
       width: 150,
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: card,
+        color: surfaceColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.06),
-        ),
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -389,16 +426,16 @@ class _TasksScreenState extends State<TasksScreen> {
           const SizedBox(height: 9),
           Text(
             '$value',
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: primaryText,
               fontSize: 23,
               fontWeight: FontWeight.bold,
             ),
           ),
           Text(
             title,
-            style: const TextStyle(
-              color: muted,
+            style: TextStyle(
+              color: secondaryText,
               fontSize: 12,
             ),
           ),
@@ -452,15 +489,15 @@ class _TasksScreenState extends State<TasksScreen> {
         children: [
           Icon(
             icon,
-            color: const Color(0xFF69F0AE),
+            color: accentText,
             size: 13,
           ),
           const SizedBox(width: 6),
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
-                color: muted,
+              style: TextStyle(
+                color: secondaryText,
                 fontSize: 11,
               ),
               overflow: TextOverflow.ellipsis,
@@ -471,7 +508,10 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
-  // Individual task card.
+  // =====================================================
+  // INDIVIDUAL TASK CARD
+  // =====================================================
+
   Widget _taskCard(Map<String, dynamic> data) {
     final id = data['id'].toString();
     final title = (data['task_title'] ?? 'Untitled Task').toString();
@@ -503,11 +543,9 @@ class _TasksScreenState extends State<TasksScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: card,
+        color: surfaceColor,
         borderRadius: BorderRadius.circular(17),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.06),
-        ),
+        border: Border.all(color: borderColor),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -519,9 +557,9 @@ class _TasksScreenState extends State<TasksScreen> {
               color: green.withValues(alpha: 0.13),
               borderRadius: BorderRadius.circular(13),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.task_alt,
-              color: Color(0xFF69F0AE),
+              color: accentText,
             ),
           ),
           const SizedBox(width: 12),
@@ -531,8 +569,8 @@ class _TasksScreenState extends State<TasksScreen> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: primaryText,
                     fontWeight: FontWeight.bold,
                     fontSize: 15,
                   ),
@@ -541,8 +579,8 @@ class _TasksScreenState extends State<TasksScreen> {
                   const SizedBox(height: 6),
                   Text(
                     description,
-                    style: const TextStyle(
-                      color: muted,
+                    style: TextStyle(
+                      color: secondaryText,
                       fontSize: 12,
                     ),
                   ),
@@ -580,16 +618,16 @@ class _TasksScreenState extends State<TasksScreen> {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.calendar_today_outlined,
-                        color: muted,
+                        color: secondaryText,
                         size: 13,
                       ),
                       const SizedBox(width: 6),
                       Text(
                         'Due ${dueDate.day}/${dueDate.month}/${dueDate.year}',
-                        style: const TextStyle(
-                          color: muted,
+                        style: TextStyle(
+                          color: secondaryText,
                           fontSize: 11,
                         ),
                       ),
@@ -600,10 +638,10 @@ class _TasksScreenState extends State<TasksScreen> {
             ),
           ),
           PopupMenuButton<String>(
-            color: card,
-            icon: const Icon(
+            color: surfaceColor,
+            icon: Icon(
               Icons.more_vert,
-              color: muted,
+              color: secondaryText,
             ),
             onSelected: (value) {
               if (value == 'edit') {
@@ -612,14 +650,20 @@ class _TasksScreenState extends State<TasksScreen> {
                 deleteTask(id);
               }
             },
-            itemBuilder: (_) => const [
+            itemBuilder: (_) => [
               PopupMenuItem(
                 value: 'edit',
-                child: Text('Edit'),
+                child: Text(
+                  'Edit',
+                  style: TextStyle(color: primaryText),
+                ),
               ),
-              PopupMenuItem(
+              const PopupMenuItem(
                 value: 'delete',
-                child: Text('Delete'),
+                child: Text(
+                  'Delete',
+                  style: TextStyle(color: Colors.redAccent),
+                ),
               ),
             ],
           ),
@@ -628,13 +672,17 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
+  // =====================================================
+  // MAIN BUILD
+  // =====================================================
+
   @override
   Widget build(BuildContext context) {
     if (user == null) {
-      return const Center(
+      return Center(
         child: Text(
           'Please log in to view tasks.',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: primaryText),
         ),
       );
     }
@@ -661,7 +709,7 @@ class _TasksScreenState extends State<TasksScreen> {
               Text(
                 loadError!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: muted),
+                style: TextStyle(color: secondaryText),
               ),
               const SizedBox(height: 15),
               FilledButton.icon(
@@ -704,19 +752,19 @@ class _TasksScreenState extends State<TasksScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Tasks',
               style: TextStyle(
-                color: Colors.white,
+                color: primaryText,
                 fontSize: 25,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 6),
-            const Text(
+            Text(
               'Create, organize and track your business tasks.',
               style: TextStyle(
-                color: muted,
+                color: secondaryText,
                 fontSize: 13,
               ),
             ),
@@ -758,11 +806,11 @@ class _TasksScreenState extends State<TasksScreen> {
               onChanged: (value) {
                 setState(() => searchText = value);
               },
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: primaryText),
               decoration: InputDecoration(
                 hintText: 'Search tasks...',
-                hintStyle: const TextStyle(
-                  color: muted,
+                hintStyle: TextStyle(
+                  color: secondaryText,
                   fontSize: 12,
                 ),
                 prefixIcon: const Icon(
@@ -770,10 +818,18 @@ class _TasksScreenState extends State<TasksScreen> {
                   color: green,
                 ),
                 filled: true,
-                fillColor: card,
+                fillColor: inputColor,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
                   borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(color: borderColor),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: green),
                 ),
               ),
             ),
@@ -810,9 +866,10 @@ class _TasksScreenState extends State<TasksScreen> {
                       label: Text(status),
                       selected: selected,
                       selectedColor: green,
-                      backgroundColor: card,
+                      backgroundColor: surfaceColor,
+                      side: BorderSide(color: borderColor),
                       labelStyle: TextStyle(
-                        color: selected ? Colors.black : Colors.white,
+                        color: selected ? Colors.black : primaryText,
                         fontWeight: FontWeight.w600,
                       ),
                       onSelected: (_) {
@@ -828,11 +885,11 @@ class _TasksScreenState extends State<TasksScreen> {
 
             Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
                     'All Tasks',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: primaryText,
                       fontSize: 17,
                       fontWeight: FontWeight.bold,
                     ),
@@ -840,8 +897,8 @@ class _TasksScreenState extends State<TasksScreen> {
                 ),
                 Text(
                   '${filtered.length} records',
-                  style: const TextStyle(
-                    color: muted,
+                  style: TextStyle(
+                    color: secondaryText,
                     fontSize: 12,
                   ),
                 ),
@@ -851,13 +908,13 @@ class _TasksScreenState extends State<TasksScreen> {
             const SizedBox(height: 12),
 
             if (filtered.isEmpty)
-              const Padding(
-                padding: EdgeInsets.all(35),
+              Padding(
+                padding: const EdgeInsets.all(35),
                 child: Center(
                   child: Text(
                     'No tasks found. Add a task or change your filters.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: muted),
+                    style: TextStyle(color: secondaryText),
                   ),
                 ),
               )
@@ -870,9 +927,9 @@ class _TasksScreenState extends State<TasksScreen> {
   }
 }
 
-// -----------------------------------------------------------------------------
+// =====================================================
 // ADD / EDIT TASK DIALOG
-// -----------------------------------------------------------------------------
+// =====================================================
 
 class _TaskDialog extends StatefulWidget {
   final String? id;
@@ -920,6 +977,30 @@ class _TaskDialogState extends State<_TaskDialog> {
   final statuses = ['Pending', 'In Progress', 'Completed'];
 
   static const green = Color(0xFF00C853);
+  static const muted = Color(0xFF9AA69D);
+  static const card = Color(0xFF121A15);
+
+  bool get isDark => Theme.of(context).brightness == Brightness.dark;
+
+  Color get surfaceColor =>
+      isDark ? card : Theme.of(context).colorScheme.surface;
+
+  Color get primaryText =>
+      Theme.of(context).colorScheme.onSurface;
+
+  Color get secondaryText => isDark
+      ? muted
+      : Theme.of(context).colorScheme.onSurfaceVariant;
+
+  Color get inputColor =>
+      isDark ? const Color(0xFF1A241D) : surfaceColor;
+
+  Color get borderColor => isDark
+      ? Colors.white.withValues(alpha: 0.08)
+      : Theme.of(context).colorScheme.outline.withValues(alpha: 0.25);
+
+  Color get accentText =>
+      isDark ? const Color(0xFF69F0AE) : const Color(0xFF087A3B);
 
   int? _parseId(dynamic value) {
     if (value == null) return null;
@@ -1002,6 +1083,17 @@ class _TaskDialogState extends State<_TaskDialog> {
       initialDate: dueDate,
       firstDate: DateTime(2020),
       lastDate: DateTime(2100),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: green,
+              onPrimary: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
 
     if (selected != null && mounted) {
@@ -1038,6 +1130,10 @@ class _TaskDialogState extends State<_TaskDialog> {
     }
   }
 
+  // =====================================================
+  // DROPDOWN
+  // =====================================================
+
   Widget dropdown(
     String label,
     String value,
@@ -1047,22 +1143,35 @@ class _TaskDialogState extends State<_TaskDialog> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 13),
       child: DropdownButtonFormField<String>(
+        key: ValueKey('$label-$value'),
         initialValue: value,
-        dropdownColor: const Color(0xFF1A241D),
-        style: const TextStyle(color: Colors.white),
+        dropdownColor: surfaceColor,
+        style: TextStyle(color: primaryText),
         decoration: InputDecoration(
           labelText: label,
+          labelStyle: TextStyle(color: secondaryText),
           filled: true,
-          fillColor: const Color(0xFF1A241D),
+          fillColor: inputColor,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
+            borderSide: BorderSide(color: borderColor),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: borderColor),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: green),
           ),
         ),
         items: options.map((option) {
           return DropdownMenuItem(
             value: option,
-            child: Text(option),
+            child: Text(
+              option,
+              style: TextStyle(color: primaryText),
+            ),
           );
         }).toList(),
         onChanged: saving ? null : onChanged,
@@ -1079,9 +1188,12 @@ class _TaskDialogState extends State<_TaskDialog> {
     required ValueChanged<int?> onChanged,
   }) {
     final items = <DropdownMenuItem<int?>>[
-      const DropdownMenuItem<int?>(
+      DropdownMenuItem<int?>(
         value: null,
-        child: Text('None'),
+        child: Text(
+          'None',
+          style: TextStyle(color: primaryText),
+        ),
       ),
       ...records.map((record) {
         final recordId = int.tryParse(record['id'].toString());
@@ -1091,6 +1203,7 @@ class _TaskDialogState extends State<_TaskDialog> {
           child: Text(
             (record[nameKey] ?? 'Unnamed').toString(),
             overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: primaryText),
           ),
         );
       }).where((item) => item.value != null),
@@ -1099,17 +1212,27 @@ class _TaskDialogState extends State<_TaskDialog> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 13),
       child: DropdownButtonFormField<int?>(
+        key: ValueKey('$label-$value'),
         initialValue: value,
         isExpanded: true,
-        dropdownColor: const Color(0xFF1A241D),
-        style: const TextStyle(color: Colors.white),
+        dropdownColor: surfaceColor,
+        style: TextStyle(color: primaryText),
         decoration: InputDecoration(
           labelText: label,
+          labelStyle: TextStyle(color: secondaryText),
           filled: true,
-          fillColor: const Color(0xFF1A241D),
+          fillColor: inputColor,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
+            borderSide: BorderSide(color: borderColor),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: borderColor),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: green),
           ),
         ),
         items: items,
@@ -1118,15 +1241,19 @@ class _TaskDialogState extends State<_TaskDialog> {
     );
   }
 
+  // =====================================================
+  // DIALOG BUILD
+  // =====================================================
+
   @override
   Widget build(BuildContext context) {
     final editing = widget.id != null;
 
     return AlertDialog(
-      backgroundColor: const Color(0xFF121A15),
+      backgroundColor: surfaceColor,
       title: Text(
         editing ? 'Edit Task' : 'Add New Task',
-        style: const TextStyle(color: Colors.white),
+        style: TextStyle(color: primaryText),
       ),
       content: SizedBox(
         width: 430,
@@ -1139,7 +1266,7 @@ class _TaskDialogState extends State<_TaskDialog> {
                 TextFormField(
                   controller: titleController,
                   maxLength: 150,
-                  style: const TextStyle(color: Colors.white),
+                  style: TextStyle(color: primaryText),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
                       return 'Task title is required.';
@@ -1147,9 +1274,24 @@ class _TaskDialogState extends State<_TaskDialog> {
 
                     return null;
                   },
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Task Title *',
-                    prefixIcon: Icon(Icons.assignment_outlined),
+                    labelStyle: TextStyle(color: secondaryText),
+                    prefixIcon: const Icon(Icons.assignment_outlined),
+                    filled: true,
+                    fillColor: inputColor,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: green),
+                    ),
                   ),
                 ),
 
@@ -1158,10 +1300,25 @@ class _TaskDialogState extends State<_TaskDialog> {
                 TextFormField(
                   controller: descriptionController,
                   maxLines: 3,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
+                  style: TextStyle(color: primaryText),
+                  decoration: InputDecoration(
                     labelText: 'Description',
-                    prefixIcon: Icon(Icons.notes_outlined),
+                    labelStyle: TextStyle(color: secondaryText),
+                    prefixIcon: const Icon(Icons.notes_outlined),
+                    filled: true,
+                    fillColor: inputColor,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: green),
+                    ),
                   ),
                 ),
 
@@ -1179,14 +1336,14 @@ class _TaskDialogState extends State<_TaskDialog> {
                   }
                 }),
 
-                const Align(
+                Align(
                   alignment: Alignment.centerLeft,
                   child: Padding(
-                    padding: EdgeInsets.only(bottom: 9),
+                    padding: const EdgeInsets.only(bottom: 9),
                     child: Text(
                       'Link this task (optional)',
                       style: TextStyle(
-                        color: Color(0xFF69F0AE),
+                        color: accentText,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -1243,15 +1400,13 @@ class _TaskDialogState extends State<_TaskDialog> {
                     Icons.calendar_month,
                     color: green,
                   ),
-                  title: const Text(
+                  title: Text(
                     'Due Date',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(color: primaryText),
                   ),
                   subtitle: Text(
                     '${dueDate.day}/${dueDate.month}/${dueDate.year}',
-                    style: const TextStyle(
-                      color: Color(0xFF9AA69D),
-                    ),
+                    style: TextStyle(color: secondaryText),
                   ),
                   trailing: TextButton(
                     onPressed: saving ? null : chooseDate,

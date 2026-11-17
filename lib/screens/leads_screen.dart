@@ -1,3 +1,4 @@
+
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -52,14 +53,17 @@ class LeadsScreen extends StatefulWidget {
 }
 
 class _LeadsScreenState extends State<LeadsScreen> {
-  static const Color backgroundColor = Color(0xFF080C09);
-  static const Color cardColor = Color(0xFF121A15);
   static const Color emerald = Color(0xFF00C853);
-  static const Color emeraldLight = Color(0xFF69F0AE);
-  static const Color mutedColor = Color(0xFF9AA69D);
+
+  Color get cardColor => Theme.of(context).colorScheme.surfaceContainerLow;
+  Color get mutedColor => Theme.of(context).colorScheme.onSurfaceVariant;
+  Color get textColor => Theme.of(context).colorScheme.onSurface;
+
+  Color get emeraldLight => Theme.of(context).brightness == Brightness.dark
+      ? const Color(0xFF69F0AE)
+      : const Color(0xFF087A3D);
 
   static const String webApiBase = 'http://localhost/business_crm_api';
-
   static const String androidApiBase = 'http://10.0.2.2/business_crm_api';
 
   String get apiBase {
@@ -73,8 +77,10 @@ class _LeadsScreenState extends State<LeadsScreen> {
   }
 
   String get leadsApiUrl => '$apiBase/api/leads/index.php';
-
   String get customersApiUrl => '$apiBase/api/customers/index.php';
+
+  // Lead conversion endpoint
+  String get convertLeadApiUrl => '$apiBase/api/leads/convert.php';
 
   final TextEditingController searchController = TextEditingController();
 
@@ -83,6 +89,9 @@ class _LeadsScreenState extends State<LeadsScreen> {
 
   bool isLoading = true;
   String? loadError;
+
+  // Prevent multiple simultaneous conversion requests.
+  final Set<String> convertingLeadIds = {};
 
   String searchText = '';
   String selectedStatus = 'All';
@@ -320,6 +329,138 @@ class _LeadsScreenState extends State<LeadsScreen> {
   }
 
   // =====================================================
+  // CONVERT QUALIFIED LEAD TO CUSTOMER
+  // =====================================================
+
+  Future<void> convertLeadToCustomer(LeadRecord lead) async {
+    final leadId = lead.id;
+    final leadName = (lead.data['name'] ?? 'this lead').toString();
+    final leadStatus = (lead.data['status'] ?? '').toString();
+
+    // Only Qualified leads can be converted.
+    if (leadStatus.toLowerCase() != 'qualified') {
+      showMessage('Only Qualified leads can be converted.');
+      return;
+    }
+
+    // Do not convert an already linked lead.
+    final existingCustomerId = lead.data['customerId'];
+
+    if (existingCustomerId != null &&
+        existingCustomerId.toString().isNotEmpty) {
+      showMessage('This lead is already linked to a customer.');
+      return;
+    }
+
+    if (convertingLeadIds.contains(leadId)) {
+      return;
+    }
+
+    // Ask for confirmation.
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: cardColor,
+          title: Text(
+            'Convert Lead to Customer?',
+            style: TextStyle(
+              color: textColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            'Are you sure you want to convert "$leadName" into a customer?\n\n'
+            'A new customer record will be created using this lead\'s details.',
+            style: TextStyle(color: mutedColor),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: emerald,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.pop(dialogContext, true),
+              icon: const Icon(Icons.person_add_alt_1),
+              label: const Text('Convert'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() {
+      convertingLeadIds.add(leadId);
+    });
+
+    try {
+      final parsedLeadId = int.tryParse(leadId);
+
+      if (parsedLeadId == null || parsedLeadId <= 0) {
+        throw Exception('Invalid lead ID.');
+      }
+
+      final response = await http
+          .post(
+            Uri.parse(convertLeadApiUrl),
+            headers: await getHeaders(),
+            body: jsonEncode({
+              'lead_id': parsedLeadId,
+            }),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      final result = decodeResponse(response);
+      final responseData = result['data'];
+
+      // Refresh both leads and customers after successful conversion.
+      await loadScreenData();
+
+      if (!mounted) return;
+
+      if (loadError != null) {
+        showMessage(
+          'Lead converted successfully, but refreshing the lists failed: '
+          '$loadError',
+        );
+        return;
+      }
+
+      final customerName = responseData is Map
+          ? (responseData['customer_name'] ?? leadName).toString()
+          : leadName;
+
+      final customerId = responseData is Map
+          ? (responseData['customer_id'] ?? '').toString()
+          : '';
+
+      showMessage(
+        customerId.isNotEmpty
+            ? '$customerName converted successfully! Customer ID: $customerId'
+            : '$customerName converted successfully!',
+      );
+    } catch (error) {
+      if (!mounted) return;
+
+      showMessage(
+        'Conversion failed: ${error.toString().replaceFirst('Exception: ', '')}',
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          convertingLeadIds.remove(leadId);
+        });
+      }
+    }
+  }
+
+  // =====================================================
   // SHOW ADD / EDIT DIALOG
   // =====================================================
 
@@ -383,13 +524,13 @@ class _LeadsScreenState extends State<LeadsScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: cardColor,
-        title: const Text(
+        title: Text(
           'Delete Lead?',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: textColor),
         ),
         content: Text(
           'Are you sure you want to delete ${lead.data['name']}?',
-          style: const TextStyle(color: mutedColor),
+          style: TextStyle(color: mutedColor),
         ),
         actions: [
           TextButton(
@@ -448,8 +589,8 @@ class _LeadsScreenState extends State<LeadsScreen> {
         backgroundColor: cardColor,
         title: Text(
           (data['name'] ?? 'Lead Details').toString(),
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: textColor,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -500,11 +641,11 @@ class _LeadsScreenState extends State<LeadsScreen> {
       padding: const EdgeInsets.only(bottom: 12),
       child: RichText(
         text: TextSpan(
-          style: const TextStyle(color: mutedColor, fontSize: 14),
+          style: TextStyle(color: mutedColor, fontSize: 14),
           children: [
             TextSpan(
               text: '$label: ',
-              style: const TextStyle(
+              style: TextStyle(
                 color: emeraldLight,
                 fontWeight: FontWeight.bold,
               ),
@@ -561,7 +702,7 @@ class _LeadsScreenState extends State<LeadsScreen> {
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+        border: Border.all(color: textColor.withValues(alpha: 0.07)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -570,14 +711,14 @@ class _LeadsScreenState extends State<LeadsScreen> {
           const SizedBox(height: 12),
           Text(
             count.toString(),
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: textColor,
               fontSize: 25,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 4),
-          Text(title, style: const TextStyle(color: mutedColor, fontSize: 13)),
+          Text(title, style: TextStyle(color: mutedColor, fontSize: 13)),
         ],
       ),
     );
@@ -612,10 +753,46 @@ class _LeadsScreenState extends State<LeadsScreen> {
             child: Text(
               value,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: mutedColor, fontSize: 12),
+              style: TextStyle(color: mutedColor, fontSize: 12),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // =====================================================
+  // CONVERSION BUTTON
+  // =====================================================
+
+  Widget _convertLeadButton(LeadRecord lead) {
+    final leadId = lead.id;
+    final isConverting = convertingLeadIds.contains(leadId);
+
+    return SizedBox(
+      height: 38,
+      child: OutlinedButton.icon(
+        onPressed: isConverting
+            ? null
+            : () => convertLeadToCustomer(lead),
+        icon: isConverting
+            ? const SizedBox(
+                height: 15,
+                width: 15,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.person_add_alt_1, size: 17),
+        label: Text(
+          isConverting ? 'Converting...' : 'Convert to Customer',
+          style: const TextStyle(fontSize: 12),
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: emeraldLight,
+          side: BorderSide(color: emeraldLight.withValues(alpha: 0.6)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
       ),
     );
   }
@@ -636,12 +813,18 @@ class _LeadsScreenState extends State<LeadsScreen> {
     final category = (data['category'] ?? 'Other').toString();
     final customerName = (data['customerName'] ?? '').toString();
 
+    final hasCustomer = data['customerId'] != null &&
+        data['customerId'].toString().isNotEmpty;
+
+    final canConvert =
+        status.toLowerCase() == 'qualified' && !hasCustomer;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 13),
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(color: textColor.withValues(alpha: 0.08)),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
@@ -653,11 +836,12 @@ class _LeadsScreenState extends State<LeadsScreen> {
             children: [
               CircleAvatar(
                 radius: 27,
-                backgroundColor: const Color(0xFF103B25),
+                backgroundColor:
+                    Theme.of(context).colorScheme.primaryContainer,
                 child: Text(
                   name.isNotEmpty ? name[0].toUpperCase() : '?',
-                  style: const TextStyle(
-                    color: emeraldLight,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
                     fontSize: 19,
                     fontWeight: FontWeight.bold,
                   ),
@@ -670,8 +854,8 @@ class _LeadsScreenState extends State<LeadsScreen> {
                   children: [
                     Text(
                       name,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: textColor,
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                       ),
@@ -690,11 +874,36 @@ class _LeadsScreenState extends State<LeadsScreen> {
                       children: [
                         _tag(status, statusColor(status)),
                         _tag('$priority Priority', priorityColor(priority)),
-                        _tag(category, emeraldLight),
+                        _tag(category, Theme.of(context).colorScheme.primary),
                         if (customerName.isNotEmpty)
-                          _tag('Customer: $customerName', Colors.tealAccent),
+                          _tag('Customer: $customerName', Colors.teal),
                       ],
                     ),
+                    if (canConvert) ...[
+                      const SizedBox(height: 12),
+                      _convertLeadButton(lead),
+                    ],
+                    if (status.toLowerCase() == 'converted' || hasCustomer) ...[
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            color: emeraldLight,
+                            size: 17,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Customer conversion completed',
+                            style: TextStyle(
+                              color: emeraldLight,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -710,17 +919,17 @@ class _LeadsScreenState extends State<LeadsScreen> {
                     deleteLead(lead);
                   }
                 },
-                itemBuilder: (context) => const [
+                itemBuilder: (context) => [
                   PopupMenuItem(
                     value: 'details',
                     child: Text(
                       'View Details',
-                      style: TextStyle(color: Colors.white),
+                      style: TextStyle(color: textColor),
                     ),
                   ),
                   PopupMenuItem(
                     value: 'edit',
-                    child: Text('Edit', style: TextStyle(color: Colors.white)),
+                    child: Text('Edit', style: TextStyle(color: textColor)),
                   ),
                   PopupMenuItem(
                     value: 'delete',
@@ -745,7 +954,7 @@ class _LeadsScreenState extends State<LeadsScreen> {
   Widget _searchField() {
     return TextField(
       controller: searchController,
-      style: const TextStyle(color: Colors.white),
+      style: TextStyle(color: textColor),
       onChanged: (value) {
         setState(() {
           searchText = value;
@@ -753,7 +962,7 @@ class _LeadsScreenState extends State<LeadsScreen> {
       },
       decoration: InputDecoration(
         hintText: 'Search leads by name, phone or email...',
-        hintStyle: const TextStyle(color: mutedColor),
+        hintStyle: TextStyle(color: mutedColor),
         prefixIcon: const Icon(Icons.search, color: emerald),
         filled: true,
         fillColor: cardColor,
@@ -763,7 +972,7 @@ class _LeadsScreenState extends State<LeadsScreen> {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
+          borderSide: BorderSide(color: textColor.withValues(alpha: 0.05)),
         ),
       ),
     );
@@ -782,10 +991,10 @@ class _LeadsScreenState extends State<LeadsScreen> {
         initialValue: value,
         isExpanded: true,
         dropdownColor: cardColor,
-        style: const TextStyle(color: Colors.white),
+        style: TextStyle(color: textColor),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: const TextStyle(color: mutedColor),
+          labelStyle: TextStyle(color: mutedColor),
           filled: true,
           fillColor: cardColor,
           isDense: true,
@@ -846,16 +1055,16 @@ class _LeadsScreenState extends State<LeadsScreen> {
   @override
   Widget build(BuildContext context) {
     if (currentUser == null) {
-      return const Center(
+      return Center(
         child: Text(
           'Please log in to view leads.',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: textColor),
         ),
       );
     }
 
     if (isLoading) {
-      return const Center(child: CircularProgressIndicator(color: emerald));
+      return Center(child: CircularProgressIndicator(color: emerald));
     }
 
     if (loadError != null && leads.isEmpty) {
@@ -871,10 +1080,10 @@ class _LeadsScreenState extends State<LeadsScreen> {
                 size: 45,
               ),
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 'Unable to load leads',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: textColor,
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
                 ),
@@ -883,7 +1092,7 @@ class _LeadsScreenState extends State<LeadsScreen> {
               Text(
                 loadError!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: mutedColor),
+                style: TextStyle(color: mutedColor),
               ),
               const SizedBox(height: 16),
               ElevatedButton.icon(
@@ -913,16 +1122,16 @@ class _LeadsScreenState extends State<LeadsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Leads Management',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: textColor,
                         fontSize: 25,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
+                    Text(
                       'Track, organize and convert your potential customers.',
                       style: TextStyle(color: mutedColor),
                     ),
@@ -1030,11 +1239,11 @@ class _LeadsScreenState extends State<LeadsScreen> {
 
                     Row(
                       children: [
-                        const Expanded(
+                        Expanded(
                           child: Text(
                             'All Leads',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: textColor,
                               fontSize: 19,
                               fontWeight: FontWeight.bold,
                             ),
@@ -1042,7 +1251,7 @@ class _LeadsScreenState extends State<LeadsScreen> {
                         ),
                         Text(
                           '${filtered.length} records',
-                          style: const TextStyle(color: mutedColor),
+                          style: TextStyle(color: mutedColor),
                         ),
                       ],
                     ),
@@ -1050,8 +1259,8 @@ class _LeadsScreenState extends State<LeadsScreen> {
                     const SizedBox(height: 13),
 
                     if (filtered.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 50),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 50),
                         child: Center(
                           child: Column(
                             children: [
@@ -1060,15 +1269,15 @@ class _LeadsScreenState extends State<LeadsScreen> {
                                 size: 55,
                                 color: mutedColor,
                               ),
-                              SizedBox(height: 12),
+                              const SizedBox(height: 12),
                               Text(
                                 'No leads found',
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  color: textColor,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              SizedBox(height: 5),
+                              const SizedBox(height: 5),
                               Text(
                                 'Add a lead or change your filters.',
                                 style: TextStyle(color: mutedColor),
@@ -1093,7 +1302,7 @@ class _LeadsScreenState extends State<LeadsScreen> {
     return ElevatedButton.icon(
       style: ElevatedButton.styleFrom(
         backgroundColor: emerald,
-        foregroundColor: Colors.black,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       ),
@@ -1129,9 +1338,14 @@ class _LeadDialog extends StatefulWidget {
 }
 
 class _LeadDialogState extends State<_LeadDialog> {
-  static const Color cardColor = Color(0xFF121A15);
   static const Color emerald = Color(0xFF00C853);
-  static const Color mutedColor = Color(0xFF9AA69D);
+
+  Color get cardColor => Theme.of(context).colorScheme.surfaceContainerLow;
+  Color get mutedColor => Theme.of(context).colorScheme.onSurfaceVariant;
+  Color get textColor => Theme.of(context).colorScheme.onSurface;
+  Color get fieldColor =>
+      Theme.of(context).colorScheme.surfaceContainerHighest;
+
   late final TextEditingController nameController;
   late final TextEditingController phoneController;
   late final TextEditingController emailController;
@@ -1213,7 +1427,9 @@ class _LeadDialogState extends State<_LeadDialog> {
     if (nameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Lead name is required.')));
+      ).showSnackBar(
+        const SnackBar(content: Text('Lead name is required.')),
+      );
       return;
     }
 
@@ -1271,13 +1487,13 @@ class _LeadDialogState extends State<_LeadDialog> {
         enabled: !isSaving,
         keyboardType: keyboardType,
         maxLines: maxLines,
-        style: const TextStyle(color: Colors.white),
+        style: TextStyle(color: textColor),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: const TextStyle(color: mutedColor),
+          labelStyle: TextStyle(color: mutedColor),
           prefixIcon: Icon(icon, color: emerald),
           filled: true,
-          fillColor: const Color(0xFF1A241D),
+          fillColor: fieldColor,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
@@ -1300,12 +1516,12 @@ class _LeadDialogState extends State<_LeadDialog> {
         initialValue: value,
         isExpanded: true,
         dropdownColor: cardColor,
-        style: const TextStyle(color: Colors.white),
+        style: TextStyle(color: textColor),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: const TextStyle(color: mutedColor),
+          labelStyle: TextStyle(color: mutedColor),
           filled: true,
-          fillColor: const Color(0xFF1A241D),
+          fillColor: fieldColor,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
@@ -1325,8 +1541,8 @@ class _LeadDialogState extends State<_LeadDialog> {
       backgroundColor: cardColor,
       title: Text(
         widget.data.isEmpty ? 'Add New Lead' : 'Edit Lead',
-        style: const TextStyle(
-          color: Colors.white,
+        style: TextStyle(
+          color: textColor,
           fontWeight: FontWeight.bold,
         ),
       ),
@@ -1394,13 +1610,13 @@ class _LeadDialogState extends State<_LeadDialog> {
                 initialValue: customerId,
                 isExpanded: true,
                 dropdownColor: cardColor,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: textColor),
                 decoration: InputDecoration(
                   labelText: 'Link Existing Customer (Optional)',
-                  labelStyle: const TextStyle(color: mutedColor),
+                  labelStyle: TextStyle(color: mutedColor),
                   prefixIcon: const Icon(Icons.link, color: emerald),
                   filled: true,
-                  fillColor: const Color(0xFF1A241D),
+                  fillColor: fieldColor,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -1429,8 +1645,8 @@ class _LeadDialogState extends State<_LeadDialog> {
               ),
 
               if (widget.customers.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.only(top: 10),
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
                   child: Text(
                     'No existing customers found. '
                     'You can still add this lead.',
@@ -1449,16 +1665,16 @@ class _LeadDialogState extends State<_LeadDialog> {
         ElevatedButton.icon(
           style: ElevatedButton.styleFrom(
             backgroundColor: emerald,
-            foregroundColor: Colors.black,
+            foregroundColor: Theme.of(context).colorScheme.onPrimary,
           ),
           onPressed: isSaving ? null : saveLead,
           icon: isSaving
-              ? const SizedBox(
+              ? SizedBox(
                   width: 16,
                   height: 16,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: Colors.black,
+                    color: Theme.of(context).colorScheme.onPrimary,
                   ),
                 )
               : const Icon(Icons.save_outlined),
